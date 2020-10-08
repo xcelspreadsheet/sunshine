@@ -1,0 +1,22 @@
+{
+  "id": 7,
+  "name": "Simple Static",
+  "fragment": "precision highp float;\nprecision highp int;\n\nvarying vec2 vUv;\nvarying vec3 vPosition;\n\nuniform float time;\n\nvoid main( void ) {\n\t\n\tfloat t = sin(time);\n\tvec2 toSend = vec2(vUv.xy*t);\n\tfloat statik = fract(cos(dot(toSend.xy,vec2(80.91,90.23)))*47488.0);\n\tgl_FragColor = vec4(statik);\n\n}",
+  "vertex": "precision highp float;\nprecision highp int;\n\nuniform mat4 modelMatrix;\nuniform mat4 modelViewMatrix;\nuniform mat4 projectionMatrix;\nuniform mat4 viewMatrix;\nuniform mat3 normalMatrix;\n\nattribute vec3 position;\nattribute vec3 normal;\nattribute vec2 uv;\nattribute vec2 uv2;\n\nvarying vec2 vUv;\nvarying vec3 vPosition;\n\nvoid main() {\n  vUv = uv;\n  vPosition = position;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}",
+  "uniforms": {
+    "time": {
+      "type": "f",
+      "glslType": "float",
+      "description": "",
+      "textureId": null,
+      "runtime": {
+        "texture": null
+      }
+    }
+  },
+  "url": "http://shaderfrog.com/app/view/7",
+  "user": {
+    "username": "andrewray",
+    "url": "http://shaderfrog.com/app/profile/andrewray"
+  }
+}

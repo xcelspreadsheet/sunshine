@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
@@ -28,7 +28,30 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div class="title">
+    <div class="titletext">SUNSHINE
+      
+    </div>
+    <div id="progress" class="progress"></div>
+    </div>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+
+    <div class="shinebutton" id="shinebutton">
+      <input type="file" accept="image/*" id="file-input"/>
+      <label for="file-input"><img
+        src="/images/8-Point-Star_black_void.svg"
+      /></label>
+    </div>
+    <div class="replyinput">
+      <input type="file" accept="image/*" id="reply-input"/>
+      <label for="reply-input"></label>
+    </div>
+    <!--  <div class="icon-bar">
+  <a></a>   </div>  -->
+    <div id="root2"></div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

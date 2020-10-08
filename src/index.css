@@ -1,13 +1,512 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
+  font-family: 'Helvetica Neue', 'Segoe UI','Roboto', 'Arial', sans-serif;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+@font-face {
+  font-family: "OttoAttac";
+  src: local("OttoAttac"), url(./fonts/OTTOATTACTYPE.ttf) format("truetype");
+}
+
+.title {
+  font-family: OttoAttac, serif;
+  color: rgb(0, 0, 0);
+  position: fixed;
+  left: 0;
+  font-size: 18vw;
+  overflow:visible;
+
+  top: 0;
+  width: 100vw;
+  pointer-events: none;
+  overflow: hidden;
+  padding-bottom: -5px;
+  padding-top: 10px;
+  z-index: 100;
+  /* border-bottom-width: 10px; */
+  text-align: center;
+}
+
+.titletext {
+  border-bottom: 1px solid black;
+
+
+}
+
+
+
+@media screen and (min-width: 600px) {
+  .title {
+     font-size: 72px;
+  }
+}
+
+.icon-bar {
+  width: 100%; /* Full-width */
+  position: fixed;
+  border-top: 1px solid black;
+
+    left: 0;
+    z-index: 101;
+    bottom: 0;
+    height: auto;
+    width: 100%;
+    overflow: hidden;
+    max-height: 10vh;
+
+}
+
+.replyinput {
+  display: none;
+}
+
+.shinebutton {
+  width: 150px; /* Full-width */
+  position: fixed;
+  border: 1px solid black;
+  border-radius: 50%;
+margin:auto;
+    z-index: 101;
+    bottom: -35px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    height: 100px;
+
+}
+
+.shinebutton>input {
+  display:none;
+}
+
+.shinebutton img {
+  height:100%;
+  width:100%;
+  animation: spin 2s linear 0 infinite ;
+  -webkit-animation-name: spin;
+  -webkit-animation-timing-function: linear;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-animation-duration: 6s;
+}
+
+@-webkit-keyframes spin {
+  from { -webkit-transform: rotateY(0deg);    }
+  to   { -webkit-transform: rotateY(360deg); }
+}
+
+@keyframes spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.icon-bar a {
+  border-left: 1px solid black;
+
+  float: left; /* Float links side by side */
+  text-align: center; /* Center-align text */
+  width: 19.8%; /* Equal width (5 icons with 20% width each = 100%) */
+  padding: 12px 0; /* Some top and bottom padding */
+  transition: all 0.3s ease; /* Add transition for hover effects */
+  color: black; /* White text color */
+  font-size: 36px; /* Increased font size */
+}
+
+.icon-bar a:hover {
+  color: rgba(253, 185, 67, 1); /* Add a hover color */
+}
+
+
+.threejs {
+  background: rgb(253, 185, 67);
+  background: radial-gradient(
+    circle at bottom center,
+    rgba(253, 185, 67, 1) 30%,
+    rgba(230, 227, 218, 0.5) 60%
+  );
+}
+
+.threejs {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+canvas {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+}
+
+.floating-label { 
+  position:relative; 
+  margin-bottom:20px; 
+
+  margin-top: 10px;
+    margin-bottom: 30px;
+}
+.floating-input , .floating-select {
+  font-size:14px;
+  padding:4px 4px;
+  display:block;
+  width:100%;
+  height:30px;
+  background-color: transparent;
+  border:none;
+  border-bottom:1px solid #757575;
+}
+
+.floating-input:focus , .floating-select:focus {
+     outline:none;
+     border-bottom:1px solid black; 
+}
+
+.floating-label label {
+  color:#999; 
+  font-size:14px;
+  font-weight:normal;
+  position:absolute;
+  pointer-events:none;
+  left:5px;
+  top:5px;
+  transition:0.2s ease all; 
+  -moz-transition:0.2s ease all; 
+  -webkit-transition:0.2s ease all;
+}
+
+.floating-input:focus ~ label, .floating-input:not(:placeholder-shown) ~ label {
+  top:-18px;
+  font-size:14px;
+  color:black;
+}
+
+.floating-select:focus ~ label , .floating-select:not([value=""]):valid ~ label {
+  top:-18px;
+  font-size:14px;
+  color:black;
+}
+
+/* active state */
+.floating-input:focus ~ .bar:before, .floating-input:focus ~ .bar:after, .floating-select:focus ~ .bar:before, .floating-select:focus ~ .bar:after {
+  width:50%;
+}
+
+*, *:before, *:after {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.floating-textarea {
+   min-height: 30px;
+   max-height: 260px; 
+   overflow:hidden;
+  overflow-x: hidden; 
+}
+
+/* highlighter */
+.highlight {
+  position:absolute;
+  height:50%; 
+  width:100%; 
+  top:15%; 
+  left:0;
+  pointer-events:none;
+  opacity:0.5;
+}
+
+/* active state */
+.floating-input:focus ~ .highlight , .floating-select:focus ~ .highlight {
+  -webkit-animation:inputHighlighter 0.3s ease;
+  -moz-animation:inputHighlighter 0.3s ease;
+  animation:inputHighlighter 0.3s ease;
+}
+
+/* animation */
+@-webkit-keyframes inputHighlighter {
+
+}
+@-moz-keyframes inputHighlighter {
+
+}
+@keyframes inputHighlighter {
+
+}
+
+.passwordinput {
+  -webkit-text-security: disc;
+}
+
+.modalbuttons {
+  margin-top: 40px;
+}
+
+@media only screen and (max-width: 420px) {
+  .modalbuttons button {
+      padding-left: 10px;
+      padding-right: 10px;
+  }
+  .toolbar button {
+      margin-right: 15px;
+  }
+}
+
+button {
+  padding: 5px 20px 5px 20px; /* Making space around letters */
+
+  font-weight: 100;
+  
+  font-style: normal;
+  font-size: medium;
+  text-transform: uppercase;
+  border-color: transparent;
+  background-color: transparent;
+  outline: 1px solid black;
+  outline-offset: 5px;
+  margin:6px;
+
+}
+
+.logindialog {
+
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+  padding: 40px;
+  overflow-y:scroll; 
+  overflow-x:hidden;
+  z-index:2000;
+  transform: translateY(-200%); 
+  height: auto;
+  max-height:90%;
+  position:fixed;
+  left: 50%;
+  top: 200%;
+  transform: translate(-50%, -50%);
+  background-color: #f2f1ed;
+  background: radial-gradient(circle at bottom center, rgba(55,115,179,1) -50%, rgba(242,241,237,1) 75%);
+}
+
+
+.submitbutton {
+
+  /*background-image: linear-gradient(to bottom,rgba(255,255,255,0) 0%, rgba(255,15,255,0) 50%, rgba(255,15,255, 1) 100%); */
+  display:inline-block;
+  float:right;
+  opacity: 0.25;
+  pointer-events: none;
+  min-width: 89px;
+  
+  }
+
+  .submitblack {
+    color:black;
+
+}
+
+.submitshake {
+    animation: shake 0.3s;
+    color: black;
+    pointer-events: all;
+    /* When the animation is finished, start again */
+    opacity:1;
+    animation-iteration-count: infinite;
+    outline: 1px solid black;
+    outline-offset: 5px;
+}
+
+  .cancelbutton {
+    /*background-image: linear-gradient(to bottom,rgba(255,255,255,0) 0%, rgba(255,15,255,0) 50%, rgba(255,15,255, 1) 100%); */
+
+    display:inline-block;
+   float:left;
+
+}
+
+
+.cancelbutton2 {
+  /*background-image: linear-gradient(to bottom,rgba(255,255,255,0) 0%, rgba(255,15,255,0) 50%, rgba(255,15,255, 1) 100%); */
+ padding:10px;
+ border: 1px solid black;
+ left:50%;
+ transform: translateX('-50%');
+outline:none
+}
+.logindialogimage {
+  height:100%;
+  width:100%;
+  margin-bottom: 10%;
+  box-shadow: 0 4px 8px 0 rgba(0, 1, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.loginform {
+  transition: max-height 0.75s ease-in-out;
+  padding-top: 15px;
+
+}
+
+.submitform {
+  transition: max-height 0.75s ease-in-out;
+
+  overflow: hidden;
+  transition-delay:1s;
+}
+
+
+.rodal-disappear {
+  animation: slideAway 0.6s ease-in-out;
+
+}
+
+.rodal-appear {
+  animation: slideUp 0.6s ease-in-out forwards;
+
+}
+
+.rodal-cancel {
+  animation: slideCancel 0.6s ease-in-out;
+
+}
+
+.rodalmask-appear {
+  animation: rodalMaskAppear 0.5s ease-in-out forwards;
+  pointer-events: all;
+}
+
+.rodalmask-disappear {
+  animation: rodalMaskAppear 0.5s ease-in-out reverse forwards;
+  pointer-events: none;
+}
+
+@keyframes slideUp {
+  0% { top:51%; }
+  100% {top:50%; }
+
+}
+
+@keyframes slideCancel {
+  0% { transform: translateY(0%); }
+  12% { transform: translateY(-1%); }
+  100% { transform: translateY(200%); }
+
+}
+
+@keyframes slideAway {
+  0% { transform: translateY(1%); }
+  12% { transform: translateY(0%); }
+  100% { transform: translateY(-200%); }
+
+}
+
+@keyframes rodalMaskAppear {
+  0% {     opacity: 0;
+      }
+  100% {     opacity: 0.1;
+      }
+}
+
+@keyframes rodalMaskDisappear {  
+  0% {     opacity: 0.1; }
+  100% {     opacity: 0;
+      }
+}
+
+.progress {
+  width: 0%;
+  height: 3px;
+  background-color: rgb(253, 185, 67);
+
+}
+
+
+
+
+.uploadbutton img {
+  height:30px;
+  width:30px;
+  animation: spin 2s linear 0 infinite ;
+  margin-top: -10px;
+  margin-bottom: -10px;
+  margin-left: -10px;
+  margin-right: 3px;
+
+  -webkit-animation-name: spin;
+  -webkit-animation-timing-function: linear;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-animation-duration: 6s;
+}
+
+.cancelbutton2 {
+  /*background-image: linear-gradient(to bottom,rgba(255,255,255,0) 0%, rgba(255,15,255,0) 50%, rgba(255,15,255, 1) 100%); */
+ padding:10px;
+ border: 1px solid black;
+outline:none;
+float:none;
+margin:auto;
+}
+
+.uploadbutton {
+  opacity:1;
+    /*background-image: linear-gradient(to bottom,rgba(255,255,255,0) 0%, rgba(255,15,255,0) 50%, rgba(255,15,255, 1) 100%); */
+    display:inline-block;
+    float:right;
+    min-width: 104px;
+}
+
+.backgroundlogin {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at bottom center, rgba(253, 185, 67, 1) -50%, rgba(242,241,237,1) 75%);
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.75s ease-in-out;
+}
+
+.backgroundloginfadein {
+  opacity:1;
+}
+
+.rodal-mask {
+  background: rgba(0, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+  position:fixed;
+  width: 100%;
+  z-index: 1000;
+  height: 100%;
+}
+
+.rodalmask-appear {
+  pointer-events: all;
+}
+
+.rodalmask-disappear {
+  animation: rodalMaskAppear 0.5s ease-in-out reverse forwards;
+  pointer-events: none;
+}
+
+#root {
+  height:200vh;
 }
