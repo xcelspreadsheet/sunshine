@@ -15,6 +15,10 @@ import { Cloudinary } from "cloudinary-core"; // If your code is for ES6 or high
 import firebase from "firebase";
 import { Interaction } from "three.interaction";
 
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import scenedata from './models/daisy.glb'
+
+
 var scene = new THREE.Scene();
 var imagewidth = 2;
 var feedheight = 0;
@@ -27,6 +31,7 @@ var photos = [];
 var areRepliesVisible = {};
 var yRepliesDifferential = {};
 var replyLine = {};
+var replyMeshes = {}
 
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
@@ -34,6 +39,15 @@ var primarywhite = "E6E3DA";
 console.log(window.innerWidth);
 if (window.innerWidth < 737) {
   imagewidth = 1.8;
+}
+
+var textureLoader = new THREE.TextureLoader();
+textureLoader.crossOrigin = "Anonymous";
+
+var grimetexture = async function getGrimTexture() {
+  textureLoader.load(roughnessmap, function (texture) {
+    return texture
+  })
 }
 
 var firebaseConfig = {
@@ -217,7 +231,22 @@ function uploadFile(file, width, height, firebaseref, reply) {
 
             sortPhotosByYPosition(photos)
 
-            var heighttodescend = ((imagewidth * (photodata.height / photodata.width))/2) + 0.5 + (photos[photos.length - 1].scale.y / 2 )
+            console.log(photos[photos.length - 1])
+
+            var topphotoheight = 0 
+
+            for (var [i, value] of photos.entries()) {
+
+              const index = i + 1
+              
+              if (photos[photos.length - index].name != "") {
+                topphotoheight = photos[photos.length - index].scale.y / 2 
+                break
+              }
+              
+          }
+
+            var heighttodescend = ((imagewidth * (photodata.height / photodata.width))/2) + 0.5 + (topphotoheight)
 
             for (var photo of photos) {
                 anime({
@@ -298,7 +327,6 @@ function uploadFile(file, width, height, firebaseref, reply) {
 
           yRepliesDifferential[replyref] = yRepliesDifferential[replyref] - heighttodescend
 
-          replyLine[replyref].scale.x = 0
 
           const startingyvalue = originalphoto.scale.y / 2;
           var yvalue = originalphoto.position.y - startingyvalue;
@@ -312,7 +340,33 @@ function uploadFile(file, width, height, firebaseref, reply) {
             }
         
             midpoints.push(yvalue - originalphoto.position.y);
+
+            yvalue = yvalue - (imagewidth * (value.height / value.width)) / 2;
+
           })
+
+          if (replyLine[originalphoto.name]) {
+
+          var originalReplyLine = replyLine[originalphoto.name]
+
+          originalReplyLine.scale.x = 0
+
+          anime({
+            targets: originalReplyLine.material,
+            opacity: [
+              {
+                value: 0,
+                easing: "easeInOutQuad",
+                duration: 200,
+              },
+            ],
+            complete: function() {
+              scene.remove(originalReplyLine)
+            }
+          });
+        }
+
+          drawReplyLine(0,midpoints,originalphoto)
         
 
       })
@@ -509,7 +563,7 @@ function contractReplies(object) {
     objectreplies = replies[object.name];
   }
 
-  animateInReplyMesh(scene.getObjectByName(object.name+"reply"))
+  animateInReplyMesh(replyMeshes[object.name])
 
   anime({
     targets: object.position,
@@ -604,7 +658,9 @@ function contractReplies(object) {
 
     //value.object.children[0].opacity = 0
 
-    anime.remove(value.object);
+    for (var animation of (value.animations || [])){
+      animation.pause()
+    }
 
     //value.object.rotation.set(0, 0, 0);
 
@@ -644,6 +700,9 @@ function contractReplies(object) {
       easing: "easeInOutQuad",
       duration: 175,
       delay: 100,
+      complete: function() {
+        value.object.rotation.set(0,0,0)
+      }
     });
 
     anime({
@@ -668,27 +727,27 @@ function contractReplies(object) {
       delay: 100,
     });
 
-    anime({
-      targets: value.object.rotation,
-      x: [
-        {
-          value: 0,
-        },
-      ],
-      y: [
-        {
-          value: 0,
-        },
-      ],
-      z: [
-        {
-          value: 0,
-        },
-      ],
-      easing: "easeInOutQuad",
-      duration: 175,
-      delay: 100,
-    });
+  //   anime({
+  //     targets: value.object.rotation,
+  //     x: [
+  //       {
+  //         value: 0,
+  //       },
+  //     ],
+  //     y: [
+  //       {
+  //         value: 0,
+  //       },
+  //     ],
+  //     z: [
+  //       {
+  //         value: 0,
+  //       },
+  //     ],
+  //     easing: "easeInOutQuad",
+  //     duration: 175,
+  //     delay: 100,
+  //   });
   });
 
 }
@@ -699,7 +758,6 @@ function displayReplies(object) {
   var yvalue = object.position.y - startingyvalue;
   var midpoints = [];
   console.log("Starting value " + startingyvalue);
-  var textureLoader = new THREE.TextureLoader();
   var objectreplies = [];
 
   if (replies[object.name]) {
@@ -767,7 +825,8 @@ function displayReplies(object) {
 
         var addRandomNumber = (Math.random() * 0.1) / 2;
         var addTimeRandomNumber = Math.random() * 200;
-        addRotationAnimation(
+        
+        value.animations = addRotationAnimation(
           value.object,
           addRandomNumber,
           addTimeRandomNumber
@@ -886,10 +945,10 @@ function displayReplies(object) {
       });
     }
   }
-  if (scene.getObjectByName(object.name + "reply") === undefined) {
+  if (!replyMeshes[object.name]) {
    createReplyMesh(object.position.y, object.name);
   } else {
-    animateOutReplyMesh(scene.getObjectByName(object.name + "reply"))
+    animateOutReplyMesh(replyMeshes[object.name])
   }
 
 }
@@ -937,7 +996,9 @@ function animateInReplyMesh(mesh) {
 function createReplyMesh(yvalue, id) {
   var replymesh = drawReplySymbol();
 
-  replymesh.name = id + "reply"
+  ///replymesh.name = id + "reply"
+
+  replyMeshes[id] = replymesh
 
   scene.add(replymesh);
 
@@ -966,10 +1027,12 @@ function createReplyMesh(yvalue, id) {
     ],
     loop: true,
   });
+
   replymesh.on("click", function () {
     replyref = id;
     document.getElementById("reply-input").click();
   });
+
 }
 
 
@@ -1025,11 +1088,13 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
   var path = new THREE.Path();
 
   for (var [index, midpoint] of midpoints.entries()) {
-    if (index === midpoints.entries().length - 1) {
-      path.lineTo(0, midpoint + 0.1);
-      path.quadraticCurveTo(0, midpoint, 0.1, midpoint);
+    if (index === midpoints.length - 1 ) {
+      path.lineTo(0, midpoint + 0.15);
+      path.quadraticCurveTo(0, midpoint, 0.15, midpoint);
+      console.log("last midpoint" + midpoint)
       continue;
     }
+    console.log("other midpoint" + midpoint)
     path.lineTo(0, midpoint);
     path.lineTo(0.15, midpoint);
     path.lineTo(0, midpoint);
@@ -1367,7 +1432,7 @@ function addBadge(username, color, object) {
 }
 
 function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
-  anime({
+  var animation1 = anime({
     targets: cube.rotation,
     x: [
       {
@@ -1384,7 +1449,7 @@ function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
     loop: true,
     direction: "alternate",
   });
-  anime({
+  var animation2 = anime({
     targets: cube.rotation,
     y: [
       {
@@ -1403,7 +1468,7 @@ function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
     duration: 4000,
   });
 
-  anime({
+ var animation3 = anime({
     targets: cube.rotation,
     z: [
       {
@@ -1421,6 +1486,8 @@ function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
     direction: "alternate",
     duration: 4000,
   });
+
+  return [animation1, animation2, animation3]
 }
 
 function hasTouch() {
@@ -1546,6 +1613,7 @@ class ThreeJS extends Component {
 
     var renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setClearColor(0xffffff, 0);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2 || 1))
     renderer.shadowMap.enabled = true;
     renderer.shadowMapSoft = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1570,6 +1638,50 @@ class ThreeJS extends Component {
     const interaction = new Interaction(renderer, scene, camera);
     
     requestLatestPhotos();
+
+    var loader = new GLTFLoader();
+
+    loader.load(
+      scenedata,
+      function(gltf) {
+        console.log('loaded scene')
+
+        gltf.scene.traverse (function (object) {
+          console.log("GLTF traverse")
+          console.log(object.name)
+        })
+
+        //gltf.scene.position.z = -1000
+        var daisy = gltf.scene.getObjectByName("daisy002")
+        scene.add(daisy)
+        daisy.scale.set(0.3,0.3,0.3)
+        daisy.rotation.set(-Math.PI/2,-Math.PI,-Math.PI)
+        daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+
+        daisy.children[0].castShadow = true
+        daisy.children[1].castShadow = true
+
+
+        console.log(daisy)
+
+        // daisy.children[0].material = new THREE.MeshStandardMaterial({
+        //   color: new THREE.Color("0x" + primarywhite)
+        // })
+
+        anime({
+          targets: daisy.rotation,
+          y: [
+            {
+              value: Math.PI,
+              easing: "linear",
+              duration: 60000,
+            },
+          ],
+          loop: true
+        });
+      
+    })
+    
 
     var spotLight = new THREE.SpotLight(0xfff1db);
     spotLight.intensity = 1;
