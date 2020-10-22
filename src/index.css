@@ -29,7 +29,7 @@ code {
 
   top: 0;
   width: 100vw;
-  pointer-events: none;
+  /* pointer-events: none; */
   overflow: hidden;
   padding-bottom: -5px;
   padding-top: 10px;
@@ -351,7 +351,14 @@ button {
  transform: translateX('-50%');
 outline:none
 }
-.logindialogimage {
+
+.logindialogimage{
+  height:100%;
+  width:100%;
+  margin-bottom: 10%;
+  /* box-shadow: 0 4px 8px 0 rgba(0, 1, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); */
+}
+.logindialogimage1 {
   height:100%;
   width:100%;
   margin-bottom: 10%;
@@ -366,7 +373,7 @@ outline:none
 
 .submitform {
   transition: max-height 0.75s ease-in-out;
-
+height: 0px;
   overflow: hidden;
   transition-delay:1s;
 }
@@ -509,4 +516,59 @@ margin:auto;
 
 #root {
   height:200vh;
+}
+
+.accountform {
+  position: fixed;
+  background: #d5d5d5;
+  width: 90vw;
+  height: 50%;
+  top: 20%;
+  max-width: 500px;
+  left: 20px;
+  z-index: 2000;
+  box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+  background: radial-gradient(circle at bottom center, rgba(55,115,179,1) -50%, rgba(242,241,237,1) 65%);
+
+}
+.accountform:after {
+	bottom: 100%;
+	left: 50%;
+	border: solid transparent;
+	content: "";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+	border-color: rgba(213, 213, 213, 0);
+	border-bottom-color: rgba(242,241,237,1);
+	border-width: 15px;
+  margin-left: -15px;
+  
+  
+}
+
+.accountimagecontainer {
+  width:25%;
+  margin:5%;
+  float:left;
+
+}
+
+.accountimagecontainer img {
+  width:100%;
+  border-radius: 50%;
+  overflow:hidden;
+  
+}
+
+.userinfo {
+  width:100%;
+
+  margin: 5%;
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: xx-large;
+  text-overflow: ellipsis
 }

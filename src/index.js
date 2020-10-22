@@ -9,6 +9,9 @@ import anime from "animejs/lib/anime.es.js";
 import replyimage from "./images/noun_Reply_70802.png";
 import starimage from "./images/images.png";
 import starimagealpha from "./images/imagesalpha.png";
+import envmap from "./images/envmap.jpg";
+import envmap2 from "./images/envmap2.jpg";
+import scratchmap from "./images/scratchtexture.jpg";
 import { SpotLight, MeshNormalMaterial } from "three";
 import { FresnelShader } from "./shaders/FresnelShader.js";
 import { Cloudinary } from "cloudinary-core"; // If your code is for ES6 or higher
@@ -16,8 +19,7 @@ import firebase from "firebase";
 import { Interaction } from "three.interaction";
 
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import scenedata from './models/daisy.glb'
-
+import scenedata from "./models/daisy.glb";
 
 var scene = new THREE.Scene();
 var imagewidth = 2;
@@ -31,7 +33,7 @@ var photos = [];
 var areRepliesVisible = {};
 var yRepliesDifferential = {};
 var replyLine = {};
-var replyMeshes = {}
+var replyMeshes = {};
 
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
@@ -46,9 +48,10 @@ textureLoader.crossOrigin = "Anonymous";
 
 var grimetexture = async function getGrimTexture() {
   textureLoader.load(roughnessmap, function (texture) {
-    return texture
-  })
-}
+    return texture;
+  });
+};
+var daisy = new THREE.Mesh();
 
 var firebaseConfig = {
   apiKey: "AIzaSyAaVRDb7lnaSSVAKfq8aYZ_KuGhhmMyA28",
@@ -116,6 +119,15 @@ function successLoginForm() {
   // submitFilesinFileInput();
 }
 
+// document.getElementById("title").onclick = function (event) {
+//   signOut()
+// }
+
+function signOut() {
+  firebase.auth().signOut()
+  console.log("signed out")
+}
+
 function submitFilesinFileInput() {
   if (document.getElementById("file-input").files) {
     let img = new Image();
@@ -135,6 +147,24 @@ function submitFilesinFileInput() {
   }
 }
 
+function handlePhotoUpload() {
+  if (document.getElementById("file-input").files.length > 0 ) {
+    let img = new Image();
+    img.src = window.URL.createObjectURL(
+      document.getElementById("file-input").files[0]
+    );
+    img.onload = () => {
+      uploadFile(
+        document.getElementById("file-input").files[0],
+        img.width,
+        img.height,
+        "testimages/",
+        false
+      );
+    };
+  }
+}
+
 document.getElementById("file-input").onchange = function (event) {
   console.log("changed");
 
@@ -144,15 +174,19 @@ document.getElementById("file-input").onchange = function (event) {
 
   var reader = new FileReader();
 
-  reader.onload = function (e) {
-    $("#loginimage").attr("src", e.target.result);
-  };
+  // reader.onload = function (e) {
+  //   $("#loginimage").attr("src", e.target.result);
+  // };
 
   reader.readAsDataURL(document.getElementById("file-input").files[0]);
 
   console.log(document.getElementById("file-input").files[0]);
 
-  displayLoginForm();
+  if (firebase.auth().currentUser.isAnonymous === true ) {
+    displayLoginForm();
+  } else {
+    handlePhotoUpload()
+  }
 };
 
 var replyref = "";
@@ -160,8 +194,16 @@ var replyref = "";
 document.getElementById("reply-input").onchange = function (event) {
   console.log("changed");
   console.log(document.getElementById("reply-input").files[0]);
+  if (firebase.auth().currentUser.isAnonymous === true ) {
+    displayLoginForm();
+  } else {
+    handleReplyUpload()
+  }
+};
 
-  if (document.getElementById("reply-input").files) {
+function handleReplyUpload() {
+
+  if (document.getElementById("reply-input").files.length > 0) {
     let img = new Image();
     img.src = window.URL.createObjectURL(
       document.getElementById("reply-input").files[0]
@@ -176,7 +218,7 @@ document.getElementById("reply-input").onchange = function (event) {
       );
     };
   }
-};
+}
 
 function uploadFile(file, width, height, firebaseref, reply) {
   var url = `https://api.cloudinary.com/v1_1/cathedralapp/upload`;
@@ -222,73 +264,33 @@ function uploadFile(file, width, height, firebaseref, reply) {
       };
 
       if (reply === false) {
-
         var newphotoreference = photosRef.push(newPhoto).then((reference) => {
           //ref.child(snapshot.key).update({"id": snapshot.key})
-          reference.once("value", function(snapshot) {
-            console.log(snapshot.val())
-            var photodata = snapshot.val()
+          reference.once("value", function (snapshot) {
+            console.log(snapshot.val());
+            var photodata = snapshot.val();
 
-            sortPhotosByYPosition(photos)
+            sortPhotosByYPosition(photos);
 
-            console.log(photos[photos.length - 1])
+            console.log(photos[photos.length - 1]);
 
-            var topphotoheight = 0 
+            var topphotoheight = 0;
 
             for (var [i, value] of photos.entries()) {
+              const index = i + 1;
 
-              const index = i + 1
-              
               if (photos[photos.length - index].name != "") {
-                topphotoheight = photos[photos.length - index].scale.y / 2 
-                break
+                topphotoheight = photos[photos.length - index].scale.y / 2;
+                break;
               }
-              
-          }
-
-            var heighttodescend = ((imagewidth * (photodata.height / photodata.width))/2) + 0.5 + (topphotoheight)
-
-            for (var photo of photos) {
-                anime({
-                  targets: photo.position,
-                  y: [
-                    {
-                      value: photo.position.y - heighttodescend,
-                      easing: "easeInOutQuad",
-                      duration: 750,
-                    },
-                  ],
-                });
             }
 
-            photodata.key = snapshot.key
+            var heighttodescend =
+              (imagewidth * (photodata.height / photodata.width)) / 2 +
+              0.5 +
+              topphotoheight;
 
-            var newphoto = createPhoto(photodata.url, -5, 3, photodata.creatorusername, photodata, false, true, false)
-
-            scrollToTop()
-          
-
-        })
-      });
-
-    } else {
-
-      //Reply action
-
-      var originalphoto = scene.getObjectByName(replyref)
-
-      var newphotoreference = photosRef.push(newPhoto).then((reference) => {
-        //ref.child(snapshot.key).update({"id": snapshot.key})
-        reference.once("value", function(snapshot) {
-          console.log(snapshot.val())
-          var photodata = snapshot.val()
-
-          sortPhotosByYPosition(photos)
-
-          var heighttodescend = ((imagewidth * (photodata.height / photodata.width))) + 0.5
-
-          for (var photo of photos) {
-            if (photo.position.y < originalphoto.position.y - 0.001) {
+            for (var photo of photos) {
               anime({
                 targets: photo.position,
                 y: [
@@ -300,81 +302,132 @@ function uploadFile(file, width, height, firebaseref, reply) {
                 ],
               });
             }
-          }
 
-          var replyx = 0.1
-          var replyy = originalphoto.position.y - (originalphoto.scale.y/2) - ((imagewidth * (photodata.height / photodata.width))/2) - 0.5
+            photodata.key = snapshot.key;
 
-          var newphoto = createPhoto(photodata.url, replyx , replyy, photodata.creatorusername, photodata, false, false, true)
+            var newphoto = createPhoto(
+              photodata.url,
+              -5,
+              3,
+              photodata.creatorusername,
+              photodata,
+              false,
+              true,
+              false
+            );
 
-          photodata.object = newphoto;
-          if (replies[replyref]) {
-            var previousreplies = replies[replyref]
-            replies[replyref] = {}
-
-            replies[replyref][snapshot.key] = photodata;
-
-            for (var key in previousreplies) {
-              replies[replyref][key] = previousreplies[key]
-            }
-            console.log(replies[replyref])
-          } else {
-            replies[replyref] = {};
-            replies[replyref][snapshot.key] = photodata;
-            console.log(replies[replyref])
-
-          }
-
-          yRepliesDifferential[replyref] = yRepliesDifferential[replyref] - heighttodescend
-
-
-          const startingyvalue = originalphoto.scale.y / 2;
-          var yvalue = originalphoto.position.y - startingyvalue;
-          var midpoints = [];
-
-          Object.entries(replies[replyref]).forEach(([key, value], index) => {
-        
-            if (yvalue < startingyvalue) {
-              yvalue = yvalue - 0.5;
-              yvalue = yvalue - (imagewidth * (value.height / value.width)) / 2;
-            }
-        
-            midpoints.push(yvalue - originalphoto.position.y);
-
-            yvalue = yvalue - (imagewidth * (value.height / value.width)) / 2;
-
-          })
-
-          if (replyLine[originalphoto.name]) {
-
-          var originalReplyLine = replyLine[originalphoto.name]
-
-          originalReplyLine.scale.x = 0
-
-          anime({
-            targets: originalReplyLine.material,
-            opacity: [
-              {
-                value: 0,
-                easing: "easeInOutQuad",
-                duration: 200,
-              },
-            ],
-            complete: function() {
-              scene.remove(originalReplyLine)
-            }
+            scrollToTop();
           });
-        }
+        });
+      } else {
+        //Reply action
 
-          drawReplyLine(0,midpoints,originalphoto)
-        
+        var originalphoto = scene.getObjectByName(replyref);
 
-      })
-    });
+        var newphotoreference = photosRef.push(newPhoto).then((reference) => {
+          //ref.child(snapshot.key).update({"id": snapshot.key})
+          reference.once("value", function (snapshot) {
+            console.log(snapshot.val());
+            var photodata = snapshot.val();
 
+            sortPhotosByYPosition(photos);
 
-    }
+            var heighttodescend =
+              imagewidth * (photodata.height / photodata.width) + 0.5;
 
+            for (var photo of photos) {
+              if (photo.position.y < originalphoto.position.y - 0.001) {
+                anime({
+                  targets: photo.position,
+                  y: [
+                    {
+                      value: photo.position.y - heighttodescend,
+                      easing: "easeInOutQuad",
+                      duration: 750,
+                    },
+                  ],
+                });
+              }
+            }
+
+            var replyx = 0.1;
+            var replyy =
+              originalphoto.position.y -
+              originalphoto.scale.y / 2 -
+              (imagewidth * (photodata.height / photodata.width)) / 2 -
+              0.5;
+
+            var newphoto = createPhoto(
+              photodata.url,
+              replyx,
+              replyy,
+              photodata.creatorusername,
+              photodata,
+              false,
+              false,
+              true
+            );
+
+            photodata.object = newphoto;
+            if (replies[replyref]) {
+              var previousreplies = replies[replyref];
+              replies[replyref] = {};
+
+              replies[replyref][snapshot.key] = photodata;
+
+              for (var key in previousreplies) {
+                replies[replyref][key] = previousreplies[key];
+              }
+              console.log(replies[replyref]);
+            } else {
+              replies[replyref] = {};
+              replies[replyref][snapshot.key] = photodata;
+              console.log(replies[replyref]);
+            }
+
+            yRepliesDifferential[replyref] =
+              yRepliesDifferential[replyref] - heighttodescend;
+
+            const startingyvalue = originalphoto.scale.y / 2;
+            var yvalue = originalphoto.position.y - startingyvalue;
+            var midpoints = [];
+
+            Object.entries(replies[replyref]).forEach(([key, value], index) => {
+              if (yvalue < startingyvalue) {
+                yvalue = yvalue - 0.5;
+                yvalue =
+                  yvalue - (imagewidth * (value.height / value.width)) / 2;
+              }
+
+              midpoints.push(yvalue - originalphoto.position.y);
+
+              yvalue = yvalue - (imagewidth * (value.height / value.width)) / 2;
+            });
+
+            if (replyLine[originalphoto.name]) {
+              var originalReplyLine = replyLine[originalphoto.name];
+
+              originalReplyLine.scale.x = 0;
+
+              anime({
+                targets: originalReplyLine.material,
+                opacity: [
+                  {
+                    value: 0,
+                    easing: "easeInOutQuad",
+                    duration: 200,
+                  },
+                ],
+                complete: function () {
+                  scene.remove(originalReplyLine);
+                },
+              });
+            }
+
+            drawReplyLine(0, midpoints, originalphoto);
+          });
+        });
+      }
 
       //var newphoto = createPhoto(url, -10, 5, firebase.auth().currentUser.displayName, ,true)
     }
@@ -390,7 +443,7 @@ function requestLatestPhotos() {
   firebase
     .database()
     .ref("testimages")
-    .limitToLast(100)
+    .limitToLast(30)
     .once("value")
     .then(function (snapshot) {
       console.log(snapshot);
@@ -413,6 +466,9 @@ function requestLatestPhotos() {
     });
 }
 
+var daisyCount = -1;
+var daisyRight = true;
+
 function generateFeed(photosList) {
   var yvalue = 0;
   for (var photo of photosList) {
@@ -429,6 +485,33 @@ function generateFeed(photosList) {
     }
 
     createPhoto(photo.url, 0, yvalue, username, photo, true, false, false);
+
+    if (daisyCount === 0) {
+      addDaisy(
+        imagewidth / 2 + 0.35,
+        yvalue + (imagewidth * (photo.height / photo.width)) / 2 - 0.05,
+        daisyRight
+      );
+      daisyRight = !daisyRight;
+    } else if (daisyCount === 3) {
+      addDaisy(
+        -imagewidth / 2 - 0.3,
+        yvalue + (imagewidth * (photo.height / photo.width)) / 4,
+        daisyRight
+      );
+    } else if (daisyCount === 5) {
+      addDaisy(
+        -imagewidth / 2 - 0.3,
+        yvalue + (imagewidth * (photo.height / photo.width)) / 4,
+        daisyRight
+      );
+      daisyRight = !daisyRight;
+    } else if (daisyCount === 6) {
+      daisyCount = -1;
+    }
+
+    daisyCount = daisyCount + 1;
+
     yvalue = yvalue - (imagewidth * (photo.height / photo.width)) / 2;
     // bottomoffeed = yvalue;
 
@@ -436,6 +519,41 @@ function generateFeed(photosList) {
     // var el = document.getElementById("root");
     // el.style.height = 0 + "px";
   }
+}
+
+function addDaisy(xvalue, yvalue, daisyRight) {
+  var newdaisy = daisy.clone();
+  //scene.add(newdaisy);
+  var rotationvalue = Math.PI * 2;
+  var randomtime = Math.random() * 10000;
+  var randomx = Math.random() * 0.6;
+  var randomrotationy = Math.random() * Math.PI;
+  var randomscale = Math.random() * 0.1;
+
+  if (!daisyRight) {
+    rotationvalue = -rotationvalue;
+    randomx = -randomx;
+  }
+
+  newdaisy.position.set(xvalue + randomx, yvalue, photozposition - 0.5);
+  newdaisy.rotation.y = newdaisy.rotation.y + randomrotationy;
+  newdaisy.scale.set(
+    newdaisy.scale.x + randomscale,
+    newdaisy.scale.x + randomscale,
+    newdaisy.scale.x + randomscale
+  );
+
+  anime({
+    targets: newdaisy.rotation,
+    y: [
+      {
+        value: rotationvalue,
+        easing: "linear",
+        duration: 120000 + randomtime,
+      },
+    ],
+    loop: true,
+  });
 }
 
 function increaseHeightByThreeJSValue(value) {
@@ -446,21 +564,21 @@ function increaseHeightByThreeJSValue(value) {
 }
 
 function calculateNewFeedSize() {
-
-  sortPhotosByYPosition(photos)
-  if (photos.length > 0){
-  var bottomoffeed = -photos[0].position.y || window.innerHeight
-  document.getElementById("root").style.height = (bottomoffeed * 100) + window.innerHeight + "px";
+  sortPhotosByYPosition(photos);
+  if (photos.length > 0) {
+    var bottomoffeed = -photos[0].position.y || window.innerHeight;
+    document.getElementById("root").style.height =
+      bottomoffeed * 100 + window.innerHeight + "px";
   }
 }
 
 var tapped = false;
 
 function sortPhotosByYPosition(photos) {
-  photos.sort(function(a, b) {
+  photos.sort(function (a, b) {
     return a.position.y - b.position.y;
-});
-console.log(photos)
+  });
+  console.log(photos);
 }
 
 function handlePhotoMouseDown(event) {
@@ -497,9 +615,12 @@ function handlePhotoMouseDown(event) {
       //document.getElementById("reply-input").click();
 
       console.log(
-        "are replies visible " + areRepliesVisible[event.intersects[0].object.name]
+        "are replies visible " +
+          areRepliesVisible[event.intersects[0].object.name]
       );
-      if ((areRepliesVisible[event.intersects[0].object.name] || false) === false) {
+      if (
+        (areRepliesVisible[event.intersects[0].object.name] || false) === false
+      ) {
         areRepliesVisible[event.intersects[0].object.name] = true;
         displayReplies(event.intersects[0].object);
         console.log("Reply false");
@@ -526,33 +647,9 @@ function handlePhotoMouseDown(event) {
       event.intersects[0].point
     );
 
-    var geometry = new THREE.PlaneGeometry(0.1, 0.1, 0.1);
-    var material = new THREE.MeshStandardMaterial();
-    material.metalness = 0.5;
-    material.roughness = 0.1;
-    material.transparent = true;
+    var point = {xposition: position.x, yposition: position.y}
 
-    var textureLoader = new THREE.TextureLoader();
-
-    textureLoader.crossOrigin = "Anonymous";
-    // eslint-disable-next-line no-loop-func
-    textureLoader.load(starimage, function (texture) {
-      material.map = texture;
-      material.roughnessMap = texture;
-      textureLoader.load(starimagealpha, function (texture) {
-        material.alphaMap = texture;
-        var object = new THREE.Mesh(geometry, material);
-
-        event.intersects[0].object.add(object);
-        object.position.set(position.x, position.y, 0.0001);
-
-        object.scale.set(
-          1 / event.intersects[0].object.scale.x,
-          1 / event.intersects[0].object.scale.y,
-          1
-        );
-      });
-    });
+    firebase.database().ref("/testimages/" + event.intersects[0].object.name + "/stars/" + firebase.auth().currentUser.uid).set(point)
   }
 }
 
@@ -563,7 +660,7 @@ function contractReplies(object) {
     objectreplies = replies[object.name];
   }
 
-  animateInReplyMesh(replyMeshes[object.name])
+  animateInReplyMesh(replyMeshes[object.name]);
 
   anime({
     targets: object.position,
@@ -580,52 +677,50 @@ function contractReplies(object) {
     targets: replyLine[object.name].scale,
     y: [
       {
-        value:0,
-        easing: "easeInOutQuad",
-        duration: 175,
-        delay: 100,
-      },
-    ]
-  });
-  anime({
-    targets: replyLine[object.name].position,
-    x: [
-      {
-        value:replyLine[object.name].position.x + 0.1,
-        easing: "easeInOutQuad",
-        duration: 175,
-        delay: 100,
-      },
-    ]
-  });
-
-
-  anime({
-    targets: replyLine[object.name].material,
-    opacity: [
-      {
-        value:0,
+        value: 0,
         easing: "easeInOutQuad",
         duration: 175,
         delay: 100,
       },
     ],
-    complete: function() {
-      scene.remove(replyLine[object.name])
-    }
+  });
+  anime({
+    targets: replyLine[object.name].position,
+    x: [
+      {
+        value: replyLine[object.name].position.x + 0.1,
+        easing: "easeInOutQuad",
+        duration: 175,
+        delay: 100,
+      },
+    ],
   });
 
-  var lowestyreply = object.position.y - 0.01
+  anime({
+    targets: replyLine[object.name].material,
+    opacity: [
+      {
+        value: 0,
+        easing: "easeInOutQuad",
+        duration: 175,
+        delay: 100,
+      },
+    ],
+    complete: function () {
+      scene.remove(replyLine[object.name]);
+    },
+  });
+
+  var lowestyreply = object.position.y - 0.01;
 
   if (Object.entries(objectreplies).length > 0) {
-    lowestyreply = Object.entries(objectreplies)[Object.entries(objectreplies).length - 1][1]
-    .object.position.y
+    lowestyreply = Object.entries(objectreplies)[
+      Object.entries(objectreplies).length - 1
+    ][1].object.position.y;
   }
 
   for (var photo of photos) {
-    if (
-      photo.position.y < lowestyreply
-    ) {
+    if (photo.position.y < lowestyreply) {
       anime({
         targets: photo.position,
         y: [
@@ -640,7 +735,7 @@ function contractReplies(object) {
   }
 
   Object.entries(objectreplies).forEach(([key, value], index) => {
-    removeItemAll(photos, value.object)
+    removeItemAll(photos, value.object);
 
     object.attach(value.object);
     //value.object.scale.set(1,1,1)
@@ -658,8 +753,8 @@ function contractReplies(object) {
 
     //value.object.children[0].opacity = 0
 
-    for (var animation of (value.animations || [])){
-      animation.pause()
+    for (var animation of value.animations || []) {
+      animation.pause();
     }
 
     //value.object.rotation.set(0, 0, 0);
@@ -674,9 +769,9 @@ function contractReplies(object) {
             duration: 300,
           },
         ],
-        complete: function() {
-          value.object.remove(child)
-        }
+        complete: function () {
+          value.object.remove(child);
+        },
       });
     }
 
@@ -700,9 +795,9 @@ function contractReplies(object) {
       easing: "easeInOutQuad",
       duration: 175,
       delay: 100,
-      complete: function() {
-        value.object.rotation.set(0,0,0)
-      }
+      complete: function () {
+        value.object.rotation.set(0, 0, 0);
+      },
     });
 
     anime({
@@ -727,29 +822,28 @@ function contractReplies(object) {
       delay: 100,
     });
 
-  //   anime({
-  //     targets: value.object.rotation,
-  //     x: [
-  //       {
-  //         value: 0,
-  //       },
-  //     ],
-  //     y: [
-  //       {
-  //         value: 0,
-  //       },
-  //     ],
-  //     z: [
-  //       {
-  //         value: 0,
-  //       },
-  //     ],
-  //     easing: "easeInOutQuad",
-  //     duration: 175,
-  //     delay: 100,
-  //   });
+    //   anime({
+    //     targets: value.object.rotation,
+    //     x: [
+    //       {
+    //         value: 0,
+    //       },
+    //     ],
+    //     y: [
+    //       {
+    //         value: 0,
+    //       },
+    //     ],
+    //     z: [
+    //       {
+    //         value: 0,
+    //       },
+    //     ],
+    //     easing: "easeInOutQuad",
+    //     duration: 175,
+    //     delay: 100,
+    //   });
   });
-
 }
 
 function displayReplies(object) {
@@ -825,14 +919,14 @@ function displayReplies(object) {
 
         var addRandomNumber = (Math.random() * 0.1) / 2;
         var addTimeRandomNumber = Math.random() * 200;
-        
+
         value.animations = addRotationAnimation(
           value.object,
           addRandomNumber,
           addTimeRandomNumber
         );
 
-        var badge = addBadge("xceslpreadsheet", color, value.object);
+        var badge = addBadge(value.creatorusername, color, value.object,value.creator);
         badge.material.opacity = 0;
 
         anime({
@@ -946,11 +1040,10 @@ function displayReplies(object) {
     }
   }
   if (!replyMeshes[object.name]) {
-   createReplyMesh(object.position.y, object.name);
+    createReplyMesh(object.position.y, object.name);
   } else {
-    animateOutReplyMesh(replyMeshes[object.name])
+    animateOutReplyMesh(replyMeshes[object.name]);
   }
-
 }
 
 function animateOutReplyMesh(mesh) {
@@ -958,18 +1051,20 @@ function animateOutReplyMesh(mesh) {
     targets: mesh.position,
     x: [
       {
-        value: (imagewidth / 2)+0.08,
+        value: imagewidth / 2 + 0.08,
         easing: "easeInOutQuad",
         duration: 350,
-        delay: 100
+        delay: 100,
       },
     ],
-    z: [{
-      value: photozposition - 0.3,
-      easing: "easeInOutQuad",
-      duration: 350,
-      delay: 100
-    }]
+    z: [
+      {
+        value: photozposition - 0.3,
+        easing: "easeInOutQuad",
+        duration: 350,
+        delay: 100,
+      },
+    ],
   });
 }
 
@@ -981,15 +1076,17 @@ function animateInReplyMesh(mesh) {
         value: 0,
         easing: "easeInOutQuad",
         duration: 350,
-        delay: 100
+        delay: 100,
       },
     ],
-    z: [{
-      value: photozposition - 0.5,
-      easing: "easeInOutQuad",
-      duration: 350,
-      delay: 100
-    }]
+    z: [
+      {
+        value: photozposition - 0.5,
+        easing: "easeInOutQuad",
+        duration: 350,
+        delay: 100,
+      },
+    ],
   });
 }
 
@@ -998,13 +1095,13 @@ function createReplyMesh(yvalue, id) {
 
   ///replymesh.name = id + "reply"
 
-  replyMeshes[id] = replymesh
+  replyMeshes[id] = replymesh;
 
   scene.add(replymesh);
 
   replymesh.position.set(0, yvalue, photozposition - 0.5);
 
-  animateOutReplyMesh(replymesh)
+  animateOutReplyMesh(replymesh);
 
   var scale = 0.55;
   replymesh.scale.set(scale, scale, scale);
@@ -1032,9 +1129,7 @@ function createReplyMesh(yvalue, id) {
     replyref = id;
     document.getElementById("reply-input").click();
   });
-
 }
-
 
 function drawReplySymbol() {
   var path = new THREE.Path();
@@ -1088,13 +1183,13 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
   var path = new THREE.Path();
 
   for (var [index, midpoint] of midpoints.entries()) {
-    if (index === midpoints.length - 1 ) {
+    if (index === midpoints.length - 1) {
       path.lineTo(0, midpoint + 0.15);
       path.quadraticCurveTo(0, midpoint, 0.15, midpoint);
-      console.log("last midpoint" + midpoint)
+      console.log("last midpoint" + midpoint);
       continue;
     }
-    console.log("other midpoint" + midpoint)
+    console.log("other midpoint" + midpoint);
     path.lineTo(0, midpoint);
     path.lineTo(0.15, midpoint);
     path.lineTo(0, midpoint);
@@ -1129,7 +1224,7 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
 
   replyLine[objectanchor.name] = meshAnchor;
 
-  meshAnchor.material.opacity = 0
+  meshAnchor.material.opacity = 0;
 
   anime({
     targets: meshAnchor.scale,
@@ -1138,7 +1233,7 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
         value: 1,
         easing: "easeInOutQuad",
         duration: 175,
-        delay: 100
+        delay: 100,
       },
     ],
     x: [
@@ -1146,7 +1241,7 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
         value: 1,
         easing: "easeInOutQuad",
         duration: 175,
-        delay: 100
+        delay: 100,
       },
     ],
   });
@@ -1154,25 +1249,24 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
     targets: meshAnchor.position,
     x: [
       {
-        value:-(imagewidth / 2) - 0.1,
+        value: -(imagewidth / 2) - 0.1,
         easing: "easeInOutQuad",
         duration: 175,
         delay: 100,
       },
-    ]
+    ],
   });
-
 
   anime({
     targets: meshAnchor.material,
     opacity: [
       {
-        value:1,
+        value: 1,
         easing: "easeInOutQuad",
         duration: 175,
         delay: 100,
       },
-    ]
+    ],
   });
 }
 
@@ -1229,7 +1323,75 @@ function generateReplyPlaceholderPosition(index) {
   return { x: x, y: y, z: z };
 }
 
-function createPhoto(url, xposition, yposition, username, photo, feedphoto, newphoto, newreply) {
+function fadeInObject(object) {
+  object.material.opacity = 0
+
+  anime({
+    targets: object.material,
+    opacity: [
+      {
+        value: 1,
+        easing: "easeInOutQuad",
+        duration: 350,
+      },
+    ],
+  });
+}
+
+function addMoveStar(parentobject, starKey, xposition, yposition) {
+
+  if (parentobject.getObjectByName(starKey)) {
+    var star = parentobject.getObjectByName(starKey)
+    star.position.x = xposition
+    star.position.y = yposition
+    //star.rotation.x = Math.random() * Math.PI
+
+    fadeInObject(star)
+
+    return
+  }
+
+  var geometry = new THREE.PlaneGeometry(0.1, 0.1, 0.1);
+  var material = new THREE.MeshStandardMaterial();
+  material.metalness = 0.5;
+  material.roughness = 0.1;
+  material.transparent = true;
+
+  // eslint-disable-next-line no-loop-func
+  textureLoader.load(starimage, function (texture) {
+    material.map = texture;
+    material.roughnessMap = texture;
+    textureLoader.load(starimagealpha, function (texture) {
+      material.alphaMap = texture;
+      var object = new THREE.Mesh(geometry, material);
+
+      parentobject.add(object);
+      object.position.set(xposition, yposition, 0.0001);
+      //object.rotation.z = Math.random() * Math.PI
+      object.name = starKey
+
+      object.scale.set(
+        1 / parentobject.scale.x,
+        1 / parentobject.scale.y,
+        1
+      );
+
+      fadeInObject(object)
+    });
+  });
+}
+
+
+function createPhoto(
+  url,
+  xposition,
+  yposition,
+  username,
+  photo,
+  feedphoto,
+  newphoto,
+  newreply
+) {
   var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
   var cube = new THREE.Mesh(geometry);
 
@@ -1259,7 +1421,6 @@ function createPhoto(url, xposition, yposition, username, photo, feedphoto, newp
     cube.position.x = xposition;
 
     if (feedphoto) {
-
       cube.position.z = 5;
       cube.material.opacity = 0;
 
@@ -1285,88 +1446,88 @@ function createPhoto(url, xposition, yposition, username, photo, feedphoto, newp
         ],
       });
 
-  } else if (newphoto) {
-    cube.position.z = photozposition
-    cube.rotation.z = -0.5
+      addStarsRefs(cube,key)
 
-    anime({
-      targets: cube.rotation,
-      z: [
-        {
-          value: 0,
-        },
-      ],
-      easing: "spring(1, 80, 20, 0)",
-      duration: 2000,
-    })
+    } else if (newphoto) {
+      cube.position.z = photozposition;
+      cube.rotation.z = -0.5;
 
-    anime({
-      targets: cube.position,
-      x: [
-        {
-          value: 0,
-        },
-      ],
-      y:[ 
-        {
-          value:0
-        }
-      ],
-      easing: "spring(1, 80, 20, 0)",
-      duration: 2000,
-      complete: function() {
-        
-        var addRandomNumber = (Math.random() * 0.1) / 2;
-        var addTimeRandomNumber = Math.random() * 200;
-      
+      anime({
+        targets: cube.rotation,
+        z: [
+          {
+            value: 0,
+          },
+        ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 2000,
+      });
+
+      anime({
+        targets: cube.position,
+        x: [
+          {
+            value: 0,
+          },
+        ],
+        y: [
+          {
+            value: 0,
+          },
+        ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 2000,
+        complete: function () {
+          var addRandomNumber = (Math.random() * 0.1) / 2;
+          var addTimeRandomNumber = Math.random() * 200;
+
           addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
-          
-        
-      }
-    });
-  } else if (newreply) {
-
-    cube.position.x = xposition + 5
-    cube.position.y = yposition + 3
-    cube.position.z = photozposition
-    cube.rotation.z = -0.5
-
-    anime({
-      targets: cube.rotation,
-      z: [
-        {
-          value: 0,
         },
-      ],
-      easing: "spring(1, 80, 20, 0)",
-      duration: 2000,
-    })
+      });
 
-    anime({
-      targets: cube.position,
-      x: [
-        {
-          value: xposition,
-        },
-      ],
-      y:[ 
-        {
-          value:yposition
-        }
-      ],
-      easing: "spring(1, 80, 20, 0)",
-      duration: 2000,
-      complete: function() {
-        
-        var addRandomNumber = (Math.random() * 0.1) / 2;
-        var addTimeRandomNumber = Math.random() * 200;
-      
+      addStarsRefs(cube,key)
+
+    } else if (newreply) {
+      cube.position.x = xposition + 5;
+      cube.position.y = yposition + 3;
+      cube.position.z = photozposition;
+      cube.rotation.z = -0.5;
+
+      anime({
+        targets: cube.rotation,
+        z: [
+          {
+            value: 0,
+          },
+        ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 2000,
+      });
+
+      anime({
+        targets: cube.position,
+        x: [
+          {
+            value: xposition,
+          },
+        ],
+        y: [
+          {
+            value: yposition,
+          },
+        ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 2000,
+        complete: function () {
+          var addRandomNumber = (Math.random() * 0.1) / 2;
+          var addTimeRandomNumber = Math.random() * 200;
+
           addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
-          
-        
-      }
-    });
-  }
+        },
+      });
+    }
+
+
 
     cube.cursor = "pointer";
     cube.on("click", (ev) => {
@@ -1376,24 +1537,25 @@ function createPhoto(url, xposition, yposition, username, photo, feedphoto, newp
 
     //cube.position.z = photozposition;
 
-
     photos.push(cube);
 
     if (photo.replies) {
       console.log("FOUDN REPLIES");
-      Object.entries(photo.replies).reverse().forEach(([replykey, replyvalue], index) => {
-        console.log(`${index}: ${replykey} = ${replyvalue}`);
-        var newplaceholder = createReplyPlaceholder(cube, index, cube);
-        console.log(newplaceholder);
-        replyvalue.object = newplaceholder;
-        if (replies[key]) {
-          replies[key][replykey] = replyvalue;
-        } else {
-          replies[key] = {};
-          replies[key][replykey] = replyvalue;
-        }
-        console.log(replies);
-      });
+      Object.entries(photo.replies)
+        .reverse()
+        .forEach(([replykey, replyvalue], index) => {
+          console.log(`${index}: ${replykey} = ${replyvalue}`);
+          var newplaceholder = createReplyPlaceholder(cube, index, cube);
+          console.log(newplaceholder);
+          replyvalue.object = newplaceholder;
+          if (replies[key]) {
+            replies[key][replykey] = replyvalue;
+          } else {
+            replies[key] = {};
+            replies[key][replykey] = replyvalue;
+          }
+          console.log(replies);
+        });
     }
 
     textureLoader.load(url, function (maptexture) {
@@ -1401,8 +1563,11 @@ function createPhoto(url, xposition, yposition, username, photo, feedphoto, newp
       cube.material.map = maptexture;
       cube.material.needsUpdate = true;
 
-      addBadge(username, "#fe5b30", cube);
+      
     });
+
+    addBadge(username, "#fe5b30", cube, photo.creator);
+
   });
 
   var addRandomNumber = (Math.random() * 0.1) / 2;
@@ -1410,16 +1575,41 @@ function createPhoto(url, xposition, yposition, username, photo, feedphoto, newp
 
   if (feedphoto) {
     addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
-    
+
     addRotationAnimation(replyholder, addRandomNumber, addTimeRandomNumber);
   }
-  return cube
+  return cube;
 }
 
-function addBadge(username, color, object) {
+function addStarsRefs(cube, key) {
+  var starsRef = firebase.database().ref('testimages/' + key + "/stars");
+
+  starsRef.on('child_added', function(data) {
+    console.log(data)
+    addMoveStar(cube, data.key, data.val().xposition, data.val().yposition)
+ });
+ starsRef.on('child_changed', function(data) {
+  console.log(data)
+  addMoveStar(cube, data.key, data.val().xposition, data.val().yposition)
+});
+}
+
+function handleBadgeClick(ev, uid) {
+  console.log(uid)
+  firebase.database().ref("/following/" + firebase.auth().currentUser.uid + "/" + uid).set(true)
+}
+
+function addBadge(username, color, object, uid) {
   var mesh = circleBadge(username, 150, 150, 75, Math.PI / 2, 0.45, color);
 
   object.add(mesh);
+
+  mesh.cursor = "pointer";
+  mesh.on("click", (ev) => {
+    console.log(ev);
+    handleBadgeClick(ev, uid);
+  });
+
 
   mesh.scale.y = 1 / object.scale.y;
   mesh.scale.x = 1 / object.scale.x;
@@ -1468,7 +1658,7 @@ function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
     duration: 4000,
   });
 
- var animation3 = anime({
+  var animation3 = anime({
     targets: cube.rotation,
     z: [
       {
@@ -1487,7 +1677,7 @@ function addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber) {
     duration: 4000,
   });
 
-  return [animation1, animation2, animation3]
+  return [animation1, animation2, animation3];
 }
 
 function hasTouch() {
@@ -1613,7 +1803,7 @@ class ThreeJS extends Component {
 
     var renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setClearColor(0xffffff, 0);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2 || 1))
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2 || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMapSoft = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1636,52 +1826,114 @@ class ThreeJS extends Component {
     camera.position.z = 5;
 
     const interaction = new Interaction(renderer, scene, camera);
-    
+
     requestLatestPhotos();
 
     var loader = new GLTFLoader();
 
-    loader.load(
-      scenedata,
-      function(gltf) {
-        console.log('loaded scene')
+    loader.load(scenedata, function (gltf) {
+      console.log("loaded scene");
 
-        gltf.scene.traverse (function (object) {
-          console.log("GLTF traverse")
-          console.log(object.name)
-        })
+      gltf.scene.traverse(function (object) {
+        console.log("GLTF traverse");
+        console.log(object.name);
+      });
 
-        //gltf.scene.position.z = -1000
-        var daisy = gltf.scene.getObjectByName("daisy002")
-        scene.add(daisy)
-        daisy.scale.set(0.3,0.3,0.3)
-        daisy.rotation.set(-Math.PI/2,-Math.PI,-Math.PI)
-        daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+      //gltf.scene.position.z = -1000
+      daisy = gltf.scene.getObjectByName("daisy002");
+      scene.add(daisy);
+      daisy.scale.set(0.25, 0.25, 0.25);
+      daisy.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
+      // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+      daisy.position.set(1000, 1000, 1000);
+      daisy.children[0].castShadow = true;
+      daisy.children[1].castShadow = true;
 
-        daisy.children[0].castShadow = true
-        daisy.children[1].castShadow = true
+      var diamond = gltf.scene.getObjectByName("diamond1");
+      //scene.add(diamond);
+      diamond.scale.set(0.1, 0.1, 0.1);
+      diamond.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
+      // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+      diamond.position.set(0, 0, 2);
+      diamond.castShadow = true;
+      console.log(diamond);
+
+      var diamondmaterial = new THREE.MeshStandardMaterial();
+      diamond.material = diamondmaterial;
+      diamond.material.color = new THREE.Color("0x" + "BEBEBE");
+      diamond.material.metalness = 1;
+      diamond.material.roughness = 0;
+      diamond.material.refractionRatio = 0.95;
+      //diamond.material.envMap.mapping = THREE.CubeRefractionMapping
+      // diamond.material.envMap = textureCube
+      var cubeloader = new THREE.CubeTextureLoader();
+
+      var textureCube = cubeloader.load([
+        envmap2,
+        envmap2,
+        envmap2,
+        envmap2,
+        envmap2,
+        envmap,
+      ]);
+      textureCube.mapping = THREE.CubeRefractionMapping;
+      diamond.material.envMap = textureCube;
+      diamond.material.transparent = true;
+      diamond.material.opacity = 1;
 
 
-        console.log(daisy)
+      //diamond.material.envMapIntensity = 0.5
 
-        // daisy.children[0].material = new THREE.MeshStandardMaterial({
-        //   color: new THREE.Color("0x" + primarywhite)
-        // })
+      textureLoader.load(scratchmap, function (texture) {
+        diamond.material.roughnessMap = texture
+        console.log('loaded scratch map')
+                })
 
-        anime({
-          targets: daisy.rotation,
-          y: [
-            {
-              value: Math.PI,
-              easing: "linear",
-              duration: 60000,
-            },
-          ],
-          loop: true
-        });
-      
-    })
-    
+      anime({
+        targets: diamond.rotation,
+        x: [
+          {
+            value: Math.PI * 2,
+            easing: "linear",
+            duration: 6000,
+          },
+        ],
+        y: [
+          {
+            value: Math.PI * 2,
+            easing: "linear",
+            duration: 6000,
+          },
+        ],
+        loop: true,
+      });
+
+      anime({
+        targets: diamond.position,
+        x: [
+          {
+            value: -1,
+            easing: "linear",
+            duration: 6000,
+          },
+        ],
+        loop: true,
+      });
+
+      //             var material = new THREE.MeshStandardMaterial( { color: "0xfffff", envMap: textureCube, refractionRatio: 0.95, roughness:0 } );
+      // material.envMap.mapping = THREE.CubeRefractionMapping;
+      // diamond.material.dispose()
+      // diamond.material = material
+
+      //diamond.material.transparent = true
+      //diamond.material.opacity = 1
+
+      console.log(daisy);
+
+      // daisy.children[0].material = new THREE.MeshStandardMaterial({
+      //   color: new THREE.Color("0x" + primarywhite)
+      // })
+    });
 
     var spotLight = new THREE.SpotLight(0xfff1db);
     spotLight.intensity = 1;
@@ -1756,7 +2008,7 @@ class ThreeJS extends Component {
     };
 
     function scrollCam() {
-      calculateNewFeedSize()
+      calculateNewFeedSize();
       var winScroll =
         document.body.scrollTop || document.documentElement.scrollTop;
       var height =
@@ -1765,7 +2017,7 @@ class ThreeJS extends Component {
       console.log("Win scroll" + winScroll);
       console.log("height" + height);
       var scrolled = winScroll / height;
-      camera.position.y = 0 - (winScroll / 100);
+      camera.position.y = 0 - winScroll / 100;
       //spotLight.position.y = 0 + bottomoffeed * scrolled;
       rotationmodifier = Math.abs(checkScrollSpeed());
       //console.log (checkScrollSpeed())
@@ -1817,6 +2069,26 @@ class ThreeJS extends Component {
   }
 }
 
+class AccountForm extends Component {
+
+  constructor() {
+    super();
+    this.state = {
+    };
+  }
+
+  render() {
+    return (
+      <div className="accountform">
+        <div className="accountimagecontainer"><img src={this.props.loggedInUser['userimage'] || ""}></img></div>
+        <div className="userinfo"><div className="username">{this.props.loggedInUser['username']||''}</div>
+    <div className="userdate">Since {this.props.currentUser['createdAt']}</div></div>
+      </div>
+    );
+  }
+
+}
+
 class LoginForm extends Component {
   constructor() {
     super();
@@ -1831,6 +2103,8 @@ class LoginForm extends Component {
     };
     this.handleChange = this.handleChange.bind(this);
     this.handlePassword = this.handlePassword.bind(this);
+    this.handleUpload = this.handleUpload.bind(this);
+
   }
   handleChange(e) {
     console.log("handling chnage");
@@ -1917,8 +2191,8 @@ class LoginForm extends Component {
                 usernameexists: false,
                 tryingtologin: false,
               });
-
-              // successLoginForm()
+              successLoginForm()
+              component.handleUpload();
             })
             .catch(function (error) {
               // Handle Errors here.
@@ -1969,7 +2243,8 @@ class LoginForm extends Component {
             tryingtologin: false,
           });
 
-          // successLoginForm()
+          successLoginForm()
+          component.handleUpload();
         })
         .catch(function (error) {
           component.setState({
@@ -2005,23 +2280,7 @@ class LoginForm extends Component {
   }
 
   handleUpload() {
-    if (document.getElementById("file-input").files) {
-      let img = new Image();
-      img.src = window.URL.createObjectURL(
-        document.getElementById("file-input").files[0]
-      );
-      img.onload = () => {
-        uploadFile(
-          document.getElementById("file-input").files[0],
-          img.width,
-          img.height,
-          "testimages/",
-          false
-        );
-      };
-    }
-  
-    successLoginForm()
+    handlePhotoUpload()
   }
 
   render() {
@@ -2103,7 +2362,7 @@ class LoginForm extends Component {
         </div>
         <div
           className="submitform"
-          style={{ maxHeight: this.props.isAnonymous ? "0px" : "800px" }}
+          // style={{ maxHeight: this.props.isAnonymous ? "0px" : "800px" }}
         >
           <div className="modalbuttons">
             <button
@@ -2115,7 +2374,8 @@ class LoginForm extends Component {
             </button>
             <button
               onClick={this.handleUpload.bind(this)}
-              className={"uploadbutton "} id="uploadbutton"
+              className={"uploadbutton "}
+              id="uploadbutton"
             >
               <img src="/images/8-Point-Star_black_void.svg"></img>
               Send
@@ -2140,7 +2400,7 @@ class LoginForm extends Component {
           }
         ></div>
 
-        <div className="rodal-mask"></div>
+        {/* <div className="rodal-mask"></div> */}
       </div>
     );
   }
@@ -2155,6 +2415,8 @@ class App extends Component {
       loginformopen: false,
       loginbuttonvisible: false,
       isAnonymous: true,
+      loggedInUser: {},
+      currentUser: {}
     };
   }
 
@@ -2169,12 +2431,30 @@ class App extends Component {
         var uid = user.uid;
         var displayname = user.displayName;
 
+        console.log(JSON.stringify(firebase.auth().currentUser))
         component.setState(
           {
             isAnonymous: isAnonymous,
+            currentUser: JSON.stringify(firebase.auth().currentUser)
           },
           function () {}
         );
+
+        //Get more info to add to the account form
+
+        if (!user.isAnonymous) {
+
+          firebase
+          .database()
+          .ref("users/" + uid)
+          .on('value', function (snapshot) {
+            console.log("firebase user ref")
+            console.log(snapshot.val())
+            component.setState({
+              loggedInUser:snapshot.val()
+            })
+          })
+        }
 
         // ...
       } else {
@@ -2219,29 +2499,37 @@ class App extends Component {
   }
 
   signOut() {
-    var component = this;
-    component.setState({
-      currentuid: "",
-      currentusername: "",
-      loginformopen: false,
-    });
+    signOut()
+    // var component = this;
+    // component.setState({
+    //   currentuid: "",
+    //   currentusername: "",
+    //   loginformopen: false,
+    // });
 
-    firebase
-      .auth()
-      .signOut()
-      .then(function () {
-        component.setState({
-          currentuid: "",
-          currentusername: "",
-        });
-      })
-      .catch(function (error) {
-        // An error happened.
-      });
+    // firebase
+    //   .auth()
+    //   .signOut()
+    //   .then(function () {
+    //     component.setState({
+    //       currentuid: "",
+    //       currentusername: "",
+    //     });
+    //   })
+    //   .catch(function (error) {
+    //     // An error happened.
+    //   });
   }
 
   render() {
     return (
+      <div>
+            <div class="title" >
+    <div class="titletext" >SUNSHINE</div>
+    <div id="progress" className="progress"></div>
+    <button id="title" onClick={this.signOut.bind(this)}>Sign Out</button>
+    </div>
+    <AccountForm loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
       <div id="root">
         <div className="threejs">
           <ThreeJS />
@@ -2252,6 +2540,7 @@ class App extends Component {
           signIn={this.signIn.bind(this)}
           isAnonymous={this.state.isAnonymous}
         />
+      </div>
       </div>
     );
   }
