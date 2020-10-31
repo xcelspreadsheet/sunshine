@@ -9,6 +9,7 @@
     "animejs": "^3.2.0",
     "cloudinary": "^1.23.0",
     "cloudinary-core": "^2.11.2",
+    "dayjs": "^1.9.4",
     "firebase": "^7.21.1",
     "jquery": "^3.5.1",
     "postprocessing": "^6.17.3",

@@ -12,6 +12,7 @@ import starimagealpha from "./images/imagesalpha.png";
 import envmap from "./images/envmap.jpg";
 import envmap2 from "./images/envmap2.jpg";
 import scratchmap from "./images/scratchtexture.jpg";
+import holographicmap from "./images/MWHG50-XLARGE.jpg";
 import { SpotLight, MeshNormalMaterial } from "three";
 import { FresnelShader } from "./shaders/FresnelShader.js";
 import { Cloudinary } from "cloudinary-core"; // If your code is for ES6 or higher
@@ -27,8 +28,11 @@ var feedheight = 0;
 var bottomoffeed = 0;
 var photozposition = 0.75;
 console.log("Window width");
-var replies = {};
+
 var photos = [];
+var currentPhotosList = []
+var currentPage = 0
+var replies = {};
 
 var areRepliesVisible = {};
 var yRepliesDifferential = {};
@@ -37,6 +41,7 @@ var replyMeshes = {};
 
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
+var primarydarkorange = "fe5b30"
 
 console.log(window.innerWidth);
 if (window.innerWidth < 737) {
@@ -46,7 +51,7 @@ if (window.innerWidth < 737) {
 var textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "Anonymous";
 
-var grimetexture = async function getGrimTexture() {
+var grimetexture = async function getGrimeTexture() {
   textureLoader.load(roughnessmap, function (texture) {
     return texture;
   });
@@ -306,9 +311,9 @@ function uploadFile(file, width, height, firebaseref, reply) {
             photodata.key = snapshot.key;
 
             var newphoto = createPhoto(
-              photodata.url,
-              -5,
-              3,
+              photodata.url, 0, 0,
+              // -5,
+              // 3,
               photodata.creatorusername,
               photodata,
               false,
@@ -440,10 +445,13 @@ function uploadFile(file, width, height, firebaseref, reply) {
 }
 
 function requestLatestPhotos() {
+
+  clearFeed()
+
   firebase
     .database()
     .ref("testimages")
-    .limitToLast(30)
+    .limitToLast(60)
     .once("value")
     .then(function (snapshot) {
       console.log(snapshot);
@@ -461,16 +469,97 @@ function requestLatestPhotos() {
       });
 
       photosList.reverse();
+      setUpNewFeed(photosList)
+      // currentPhotosList = photosList
 
-      generateFeed(photosList);
+      // currentPage = 0
+      // generateFeed(paginateArray(currentPhotosList,20,currentPage));
     });
+}
+
+function setUpNewFeed(photosList) {
+  currentPhotosList = photosList
+  currentPage = 0
+
+  scrollToTop()
+
+  generateFeed(paginateArray(currentPhotosList,20,currentPage));
+}
+
+function clearFeed() {
+  for(var photo of photos) {
+    scene.remove(photo)
+  }
+
+  replies = {};
+   photos = [];
+
+  areRepliesVisible = {};
+  yRepliesDifferential = {};
+  replyLine = {};
+   replyMeshes = {};
+}
+
+function requestPrivateFeed() {
+
+  clearFeed()
+  
+  var photosList = []
+
+  firebase.database().ref('/privatefeeds/' + firebase.auth().currentUser.uid).limitToLast(60)
+  .once("value")
+  .then(function (snapshot) {
+    console.log(snapshot);
+
+    var photosList = [];
+    var firebaseCount = 0
+    var snapshotLength = 0
+
+    snapshot.forEach(function () {
+      snapshotLength += 1
+    })
+
+    console.log("Snapshot length")
+    console.log(snapshotLength)
+
+    snapshot.forEach(function (childSnapshot) {
+      var childKey = childSnapshot.key;
+      console.log(childKey);
+
+      firebase.database().ref('/testimages/' + childKey).once("value", function(snapshot) {
+        firebaseCount += 1
+        
+        if (snapshot.val()) {
+          var childData = snapshot.val()
+          console.log(childData)
+          childData.key = childKey
+          photosList.push(childData);
+        }
+
+        if(firebaseCount === snapshotLength) {
+          photosList.reverse();
+          setUpNewFeed(photosList)
+        }
+      })
+    });
+
+
+  });
 }
 
 var daisyCount = -1;
 var daisyRight = true;
 
 function generateFeed(photosList) {
+  console.log("Generating feed")
+ //clearFeed()
+
   var yvalue = 0;
+
+  if (scene.getObjectByName( "bottomOfFeed" )) {
+    yvalue = scene.getObjectByName( "bottomOfFeed" ).position.y
+  }
+
   for (var photo of photosList) {
     console.log(photo);
     if (yvalue < 0) {
@@ -519,6 +608,19 @@ function generateFeed(photosList) {
     // var el = document.getElementById("root");
     // el.style.height = 0 + "px";
   }
+
+  if (scene.getObjectByName( "bottomOfFeed" )) {
+    var object = scene.getObjectByName( "bottomOfFeed" )
+    object.position.y = yvalue
+  } else {
+    var bottomOfFeedMesh = new THREE.Mesh()
+    bottomOfFeedMesh.name = "bottomOfFeed"
+    scene.add(bottomOfFeedMesh)
+    bottomOfFeedMesh.position.y = yvalue
+    photos.push(bottomOfFeedMesh)
+
+  }
+
 }
 
 function addDaisy(xvalue, yvalue, daisyRight) {
@@ -578,7 +680,6 @@ function sortPhotosByYPosition(photos) {
   photos.sort(function (a, b) {
     return a.position.y - b.position.y;
   });
-  console.log(photos);
 }
 
 function handlePhotoMouseDown(event) {
@@ -1185,14 +1286,20 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
   for (var [index, midpoint] of midpoints.entries()) {
     if (index === midpoints.length - 1) {
       path.lineTo(0, midpoint + 0.15);
-      path.quadraticCurveTo(0, midpoint, 0.15, midpoint);
+      path.quadraticCurveTo(0, midpoint, 0.25, midpoint);
       console.log("last midpoint" + midpoint);
       continue;
     }
-    console.log("other midpoint" + midpoint);
-    path.lineTo(0, midpoint);
-    path.lineTo(0.15, midpoint);
-    path.lineTo(0, midpoint);
+    // console.log("other midpoint" + midpoint);
+    // path.lineTo(0, midpoint);
+    // path.lineTo(0.15, midpoint);
+    // path.lineTo(0, midpoint);
+
+    path.lineTo(0, midpoint + 0.15);
+    path.quadraticCurveTo(0, midpoint, 0.25, midpoint);
+    path.quadraticCurveTo(0, midpoint, 0, midpoint - 0.15);
+    console.log("last midpoint" + midpoint);
+
   }
 
   // path.lineTo(0, endofline + 0.1);
@@ -1441,7 +1548,7 @@ function createPhoto(
           {
             value: 1,
             easing: "easeInOutQuad",
-            duration: 800 + -yposition * 100,
+            duration: 800 + -yposition * 10,
           },
         ],
       });
@@ -1450,7 +1557,10 @@ function createPhoto(
 
     } else if (newphoto) {
       cube.position.z = photozposition;
+      cube.position.x = xposition - 5
+      cube.position.y = yposition + 3
       cube.rotation.z = -0.5;
+    
 
       anime({
         targets: cube.rotation,
@@ -1467,16 +1577,16 @@ function createPhoto(
         targets: cube.position,
         x: [
           {
-            value: 0,
+            value: yposition,
           },
         ],
         y: [
           {
-            value: 0,
+            value: xposition,
           },
         ],
         easing: "spring(1, 80, 20, 0)",
-        duration: 2000,
+        duration: 800 + (-yposition * 100),
         complete: function () {
           var addRandomNumber = (Math.random() * 0.1) / 2;
           var addTimeRandomNumber = Math.random() * 200;
@@ -1576,8 +1686,10 @@ function createPhoto(
   if (feedphoto) {
     addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
 
-    addRotationAnimation(replyholder, addRandomNumber, addTimeRandomNumber);
   }
+
+  calculateNewFeedSize()
+
   return cube;
 }
 
@@ -1594,9 +1706,39 @@ function addStarsRefs(cube, key) {
 });
 }
 
-function handleBadgeClick(ev, uid) {
-  console.log(uid)
+function addUIDToFollowList(uid) {
   firebase.database().ref("/following/" + firebase.auth().currentUser.uid + "/" + uid).set(true)
+}
+
+function addFollowedPostToPrivateFeed(addedUID) {
+  firebase.database().ref('/testimages/').orderByChild('creator').equalTo(addedUID).once('value',function(snapshot) {
+    for (let key in snapshot.val()) {
+        firebase.database().ref('privatefeeds/' + firebase.auth().currentUser.uid + '/' + key).set(true)
+    }
+})
+}
+
+function removeUIDFromFollowList(uid) {
+  firebase.database().ref("/following/" + firebase.auth().currentUser.uid).child(uid).remove()
+}
+
+function removeFollowedPostFromPrivateFeed(removedUID) {
+  firebase.database().ref('/testimages/').orderByChild('creator').equalTo(removedUID).once('value',function(snapshot) {
+      for (let key in snapshot.val()) {
+          firebase.database().ref('privatefeeds/' + firebase.auth().currentUser.uid).child(key).remove()
+      }
+  })
+}
+
+function handleFollow(uid) {
+  console.log(uid)
+  addUIDToFollowList(uid)
+  addFollowedPostToPrivateFeed(uid)
+}
+
+function handleUnfollow(uid) {
+  removeUIDFromFollowList(uid)
+  removeFollowedPostFromPrivateFeed(uid)
 }
 
 function addBadge(username, color, object, uid) {
@@ -1607,7 +1749,7 @@ function addBadge(username, color, object, uid) {
   mesh.cursor = "pointer";
   mesh.on("click", (ev) => {
     console.log(ev);
-    handleBadgeClick(ev, uid);
+    handleFollow(uid);
   });
 
 
@@ -1734,9 +1876,8 @@ function circleBadge(
   ctx.fill();
 
   ctx.fillStyle = "#00000f";
-  ctx.font = "30px Arial";
-  ctx.fillTextCircle(text + " ", x, y, (radius / 3) * 2, -Math.PI / 2);
-
+  ctx.font = "30px Helvetica Neue";
+  ctx.fillTextCircle(text + " ", x, y, (radius / 3) * 1.8, -Math.PI / 2);
   ctx.beginPath();
   ctx.arc(x / 2, x / 2, radius / 2.14, 0, Math.PI * 2, true); // Outer circle
   ctx.moveTo(110, 75);
@@ -1834,91 +1975,97 @@ class ThreeJS extends Component {
     loader.load(scenedata, function (gltf) {
       console.log("loaded scene");
 
-      gltf.scene.traverse(function (object) {
-        console.log("GLTF traverse");
-        console.log(object.name);
-      });
+      // gltf.scene.traverse(function (object) {
+      //   console.log("GLTF traverse");
+      //   console.log(object.name);
+      // });
 
-      //gltf.scene.position.z = -1000
-      daisy = gltf.scene.getObjectByName("daisy002");
-      scene.add(daisy);
-      daisy.scale.set(0.25, 0.25, 0.25);
-      daisy.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
-      // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
-      daisy.position.set(1000, 1000, 1000);
-      daisy.children[0].castShadow = true;
-      daisy.children[1].castShadow = true;
+      // //gltf.scene.position.z = -1000
+      // daisy = gltf.scene.getObjectByName("daisy002");
+      // scene.add(daisy);
+      // daisy.scale.set(0.25, 0.25, 0.25);
+      // daisy.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
+      // // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+      // daisy.position.set(1000, 1000, 1000);
+      // daisy.children[0].castShadow = true;
+      // daisy.children[1].castShadow = true;
 
-      var diamond = gltf.scene.getObjectByName("diamond1");
-      //scene.add(diamond);
-      diamond.scale.set(0.1, 0.1, 0.1);
-      diamond.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
-      // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
-      diamond.position.set(0, 0, 2);
-      diamond.castShadow = true;
-      console.log(diamond);
+      // var diamond = gltf.scene.getObjectByName("diamond1");
+      // // scene.add(diamond);
+      // diamond.scale.set(0.1, 0.1, 0.1);
+      // diamond.rotation.set(-Math.PI / 2, -Math.PI, -Math.PI);
+      // // daisy.position.set(imagewidth/2 + 0.25,-0.25,photozposition - 0.75)
+      // diamond.position.set(0, 0, 2);
+      // diamond.castShadow = true;
+      // console.log(diamond);
 
-      var diamondmaterial = new THREE.MeshStandardMaterial();
-      diamond.material = diamondmaterial;
-      diamond.material.color = new THREE.Color("0x" + "BEBEBE");
-      diamond.material.metalness = 1;
-      diamond.material.roughness = 0;
-      diamond.material.refractionRatio = 0.95;
-      //diamond.material.envMap.mapping = THREE.CubeRefractionMapping
-      // diamond.material.envMap = textureCube
-      var cubeloader = new THREE.CubeTextureLoader();
+      // var diamondmaterial = new THREE.MeshStandardMaterial();
+      // diamond.material = diamondmaterial;
+      // //diamond.material.color = new THREE.Color("0x" + "BEBEBE");
+      // diamond.material.metalness = 1;
+      // diamond.material.roughness = 0;
+      // diamond.material.refractionRatio = 0.95;
+      // //diamond.material.envMap.mapping = THREE.CubeRefractionMapping
+      // // diamond.material.envMap = textureCube
+      // var cubeloader = new THREE.CubeTextureLoader();
 
-      var textureCube = cubeloader.load([
-        envmap2,
-        envmap2,
-        envmap2,
-        envmap2,
-        envmap2,
-        envmap,
-      ]);
-      textureCube.mapping = THREE.CubeRefractionMapping;
-      diamond.material.envMap = textureCube;
-      diamond.material.transparent = true;
-      diamond.material.opacity = 1;
+      // var textureCube = cubeloader.load([
+      //   holographicmap,
+      //   holographicmap,
+      //   holographicmap,
+      //   holographicmap,
+      //   holographicmap,
+      //   holographicmap,
+      // ]);
+
+      // var normalMap = textureLoader.load(holographicmap)
+      // diamond.material.normalMap = normalMap
+      // diamond.material.metalnessMap = normalMap
+      // diamond.material.map = normalMap
+      // diamond.material.roughnessMap = normalMap
+      // textureCube.mapping = THREE.CubeRefractionMapping;
+      // diamond.material.envMap = textureCube;
+      // diamond.material.transparent = true;
+      // diamond.material.opacity = 1;
 
 
-      //diamond.material.envMapIntensity = 0.5
+      // //diamond.material.envMapIntensity = 0.5
 
-      textureLoader.load(scratchmap, function (texture) {
-        diamond.material.roughnessMap = texture
-        console.log('loaded scratch map')
-                })
+      // textureLoader.load(scratchmap, function (texture) {
+      //   diamond.material.roughnessMap = texture
+      //   console.log('loaded scratch map')
+      //           })
 
-      anime({
-        targets: diamond.rotation,
-        x: [
-          {
-            value: Math.PI * 2,
-            easing: "linear",
-            duration: 6000,
-          },
-        ],
-        y: [
-          {
-            value: Math.PI * 2,
-            easing: "linear",
-            duration: 6000,
-          },
-        ],
-        loop: true,
-      });
+      // anime({
+      //   targets: diamond.rotation,
+      //   x: [
+      //     {
+      //       value: Math.PI * 2,
+      //       easing: "linear",
+      //       duration: 6000,
+      //     },
+      //   ],
+      //   y: [
+      //     {
+      //       value: Math.PI * 2,
+      //       easing: "linear",
+      //       duration: 6000,
+      //     },
+      //   ],
+      //   loop: true,
+      // });
 
-      anime({
-        targets: diamond.position,
-        x: [
-          {
-            value: -1,
-            easing: "linear",
-            duration: 6000,
-          },
-        ],
-        loop: true,
-      });
+      // anime({
+      //   targets: diamond.position,
+      //   x: [
+      //     {
+      //       value: -1,
+      //       easing: "linear",
+      //       duration: 6000,
+      //     },
+      //   ],
+      //   loop: true,
+      // });
 
       //             var material = new THREE.MeshStandardMaterial( { color: "0xfffff", envMap: textureCube, refractionRatio: 0.95, roughness:0 } );
       // material.envMap.mapping = THREE.CubeRefractionMapping;
@@ -2005,6 +2152,20 @@ class ThreeJS extends Component {
     })();
     window.onscroll = function () {
       scrollCam();
+
+      // @var int totalPageHeight
+      var totalPageHeight = document.body.scrollHeight; 
+
+      // @var int scrollPoint
+      var scrollPoint = window.scrollY + window.innerHeight;
+
+      // check if we hit the bottom of the page
+      if(scrollPoint >= totalPageHeight)
+      {
+          console.log("at the bottom");
+          currentPage += 1
+          generateFeed(paginateArray(currentPhotosList,20,currentPage))
+      }
     };
 
     function scrollCam() {
@@ -2014,8 +2175,6 @@ class ThreeJS extends Component {
       var height =
         document.documentElement.scrollHeight -
         document.documentElement.clientHeight;
-      console.log("Win scroll" + winScroll);
-      console.log("height" + height);
       var scrolled = winScroll / height;
       camera.position.y = 0 - winScroll / 100;
       //spotLight.position.y = 0 + bottomoffeed * scrolled;
@@ -2500,26 +2659,16 @@ class App extends Component {
 
   signOut() {
     signOut()
-    // var component = this;
-    // component.setState({
-    //   currentuid: "",
-    //   currentusername: "",
-    //   loginformopen: false,
-    // });
-
-    // firebase
-    //   .auth()
-    //   .signOut()
-    //   .then(function () {
-    //     component.setState({
-    //       currentuid: "",
-    //       currentusername: "",
-    //     });
-    //   })
-    //   .catch(function (error) {
-    //     // An error happened.
-    //   });
   }
+
+  requestPrivateFeed() {
+    requestPrivateFeed()
+  }
+
+  requestPublicFeed() {
+    requestLatestPhotos()
+  }
+
 
   render() {
     return (
@@ -2528,8 +2677,10 @@ class App extends Component {
     <div class="titletext" >SUNSHINE</div>
     <div id="progress" className="progress"></div>
     <button id="title" onClick={this.signOut.bind(this)}>Sign Out</button>
+    <button id="requestprivate" onClick={this.requestPrivateFeed.bind(this)}>Private</button>
+    <button id="requestpublic" onClick={this.requestPublicFeed.bind(this)}>Public</button>
     </div>
-    <AccountForm loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    {/* <AccountForm loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} /> */}
       <div id="root">
         <div className="threejs">
           <ThreeJS />
@@ -2594,4 +2745,8 @@ const scrollToTop = () => {
     window.requestAnimationFrame(scrollToTop);
     window.scrollTo(0, c - c / 8);
   }
+};
+
+function paginateArray(array, page_size, page_number) {
+  return array.slice(page_number * page_size, page_number * page_size + page_size);
 };
