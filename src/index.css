@@ -148,7 +148,7 @@ margin:auto;
   overflow: hidden;
 }
 
-canvas {
+.backgroundcanvas canvas {
   position: fixed;
   left: 0;
   top: 0;
@@ -525,6 +525,8 @@ margin:auto;
   height: 50%;
   top: 20%;
   max-width: 500px;
+  overflow-y:scroll;
+  overflow-x:scroll;
   left: 20px;
   z-index: 2000;
   box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
@@ -565,10 +567,121 @@ margin:auto;
 .userinfo {
   width:100%;
 
-  margin: 5%;
+  padding: 20px;
   font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   text-transform: uppercase;
   font-size: xx-large;
   text-overflow: ellipsis
+}
+
+.shortuserlist {
+  width: 100%;
+  display: inline-block;
+}
+
+.shortuser {
+  display:flex;
+  padding-top:2px;
+  padding-bottom:2px;
+}
+
+.listtitle {
+  font-size: x-large;
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  text-transform: uppercase;
+  padding-left:30px;
+  /* padding-bottom: 10px; */
+}
+
+.list {
+  padding-left: 50px;
+  max-height: 0px;
+  margin-top:5px;
+  overflow: hidden;
+  transition: all 0.5s ease;
+}
+
+.listexpanded {
+  max-height: 1000px;
+}
+
+.listdisplay {
+  max-height:8000px;
+  overflow:scroll;
+}
+
+.shortusertext {
+  width:60%;
+}
+
+.shortuserbutton {
+
+  width:30px;
+  text-align: center;
+  padding:0px;
+  margin-top:0px;
+  outline-offset: 0px;
+}
+
+.shortuserbuttoncontainer {
+  float:right;
+}
+
+.divider {
+  margin-left: 30px;
+  height:1px;
+  margin-right: 30px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid black;
+}
+
+.arrow {
+  display:inline-block;
+  transform:rotate(0deg);
+  transition: all 0.5s ease;
+}
+
+.arrowrotate {
+  transform:rotate(-90deg);
+}
+
+.modebutton {
+  outline: 0px;
+  border-radius: 50%;
+  border: 1px dashed black;
+  height: 50px;
+  width:50px;
+  z-index: 101;
+  bottom: -10px;
+  /* transform: translate(-50%, 0); */
+  position:fixed;
+}
+
+.globe {
+  right: 76vw;
+}
+
+.modebutton img {
+  width:45px;
+  height:45px;
+  margin-left: -18px;
+  margin-top: -3px;
+}
+
+.sigCanvas {
+  max-width:400px;
+  width:100%;
+  height:auto;
+  position:initial;
+  background-color: white;
+}
+
+.ratio {
+  display: grid;
+}
+.ratio > * {
+  grid-area: 1/1;
 }

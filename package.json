@@ -14,8 +14,10 @@
     "jquery": "^3.5.1",
     "postprocessing": "^6.17.3",
     "react": "^16.13.1",
+    "react-canvas-draw": "^1.1.1",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.3",
+    "react-signature-canvas": "^1.0.3",
     "shaderfrog-runtime": "^0.2.0",
     "three": "^0.120.1",
     "three.interaction": "^0.2.3"
