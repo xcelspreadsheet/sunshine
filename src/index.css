@@ -36,6 +36,7 @@ code {
   z-index: 100;
   /* border-bottom-width: 10px; */
   text-align: center;
+  pointer-events: none;
 }
 
 .titletext {
@@ -71,17 +72,31 @@ code {
   display: none;
 }
 
+.modeBar {
+  width:320px;
+  max-width:95%;
+  position:fixed;
+  bottom: 0px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  height: 240px;
+  z-index:101;
+  bottom:-100px;
+}
+
 .shinebutton {
   width: 150px; /* Full-width */
+  height: 100px;
   position: fixed;
+  left: 50%;
+  top:50%;
+  transform: translate(-50%, -50%);
   border: 1px solid black;
   border-radius: 50%;
-margin:auto;
+/* margin:auto; */
     z-index: 101;
-    bottom: -35px;
-    left: 50%;
-    transform: translate(-50%, 0);
-    height: 100px;
+    bottom:0px;
+
 
 }
 
@@ -155,6 +170,7 @@ margin:auto;
   width: 100vw;
   height: 100vh;
   z-index: -1;
+  touch-action: auto !important ;
 }
 
 .floating-label { 
@@ -273,15 +289,16 @@ margin:auto;
 button {
   padding: 5px 20px 5px 20px; /* Making space around letters */
 
-  font-weight: 100;
-  
+  font-weight: normal;
+  letter-spacing: 0.15em;
   font-style: normal;
   font-size: medium;
   text-transform: uppercase;
   border-color: transparent;
   background-color: transparent;
-  outline: 1px solid black;
+  /* outline: 1px solid black; */
   outline-offset: 5px;
+  box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
   margin:6px;
 
 }
@@ -518,36 +535,120 @@ margin:auto;
   height:200vh;
 }
 
+.sentBack {
+  transition: 0.5s all ease-in-out !important;
+  left: 40% !important;
+    opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* .sentForward {
+  transition: 1s all ease-in-out !important;
+  transform: translateX(20px) !important;
+    opacity: 0 !important;
+  pointer-events: none !important;
+} */
+
+.backTitle {
+  font-family: OttoAttac, serif;
+  color: rgb(0, 0, 0);
+  font-size: 10vw;
+  overflow:visible;
+  width: 100vw;
+  /* left:50%;
+  transform: translateX(-50%); */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  overflow: hidden;
+  padding-bottom: -5px;
+  padding-top: 10px;
+  z-index: 100;
+  /* border-bottom-width: 10px; */
+  text-align: center;
+  transition: 0.5s all ease-in-out;
+}
+
+@media screen and (min-width: 600px) {
+  .backTitle {
+     font-size: 36px;
+  }
+}
+
+.backButton {
+  /* transform: rotate(90deg) */
+    /* background: gold; */
+  width: 60px; 
+  /* height: 40px; */
+  border-radius: 50%;
+  /* border:1px solid black; */
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  pointer-events: all;
+}
+
 .accountform {
   position: fixed;
-  background: #d5d5d5;
+  background: rgb(0, 0, 0, 0);
   width: 90vw;
-  height: 50%;
-  top: 20%;
-  max-width: 500px;
-  overflow-y:scroll;
-  overflow-x:scroll;
-  left: 20px;
-  z-index: 2000;
+  height: 80vh;
+  /* top: 20%; */
+  max-width: 380px;
+  overflow-y: visible;
+  overflow-x: visible;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  z-index: -1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: 0.5s ease-in-out all;
+}
+
+.accountformopen {
+  pointer-events: all;
+  opacity: 1;
+  top: 43%;
+  z-index:2000;
+}
+
+.accountreadout {
   box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
-  background: radial-gradient(circle at bottom center, rgba(55,115,179,1) -50%, rgba(242,241,237,1) 65%);
+  /* background: radial-gradient(circle at top center, rgba(55,115,179,1) -50%, rgba(242,241,237,1) 65%); */
+  background-color:rgba(242,241,237,1);
+  width:98%;
+  padding-top:100px;
+  margin-left:1%;
+  margin-top:-100px;
+  height:48vh;
+
+  overflow-y:scroll;
+}
+
+.accountreadouttriangle {
+  position: absolute;
+width: 0;
+height: 0;
+border-style: solid;
+left:50%;
+transform:translateX(-50%);
+border-width: 14px 15px 0 15px;
+border-color: rgba(242,241,237,1) transparent transparent transparent;
+margin-top: -1px;
 
 }
-.accountform:after {
-	bottom: 100%;
-	left: 50%;
-	border: solid transparent;
-	content: "";
-	height: 0;
-	width: 0;
-	position: absolute;
-	pointer-events: none;
-	border-color: rgba(213, 213, 213, 0);
-	border-bottom-color: rgba(242,241,237,1);
-	border-width: 15px;
-  margin-left: -15px;
-  
-  
+
+
+.toolbarcontainer {
+  margin:30px;
+}
+
+.toolbarcontainer button {
+  width:100%;
+  padding:10px;
+  margin:0px;
+  margin-bottom: 10px;
 }
 
 .accountimagecontainer {
@@ -578,25 +679,34 @@ margin:auto;
 .shortuserlist {
   width: 100%;
   display: inline-block;
+  padding: 30px;
 }
 
 .shortuser {
+  border-top: 1px solid lightgray;
+
   display:flex;
-  padding-top:2px;
-  padding-bottom:2px;
+  /* padding-top:10px; */
+  padding-bottom:20px;
 }
 
 .listtitle {
-  font-size: x-large;
-  font-family: 'Times New Roman', Times, serif;
-  font-style: italic;
+  /* font-weight: 300; */
+  
+  font-style: normal;
+  font-size: medium;
+  padding-top:10px;
+  padding-bottom:10px;
+  letter-spacing: 0.15em;
+  /* font-family: 'Times New Roman', Times, serif; */
+  /* font-style: italic; */
   text-transform: uppercase;
-  padding-left:30px;
+  /* padding-left:30px; */
   /* padding-bottom: 10px; */
 }
 
 .list {
-  padding-left: 50px;
+  padding-left: 20px;
   max-height: 0px;
   margin-top:5px;
   overflow: hidden;
@@ -614,19 +724,45 @@ margin:auto;
 
 .shortusertext {
   width:60%;
+  font-family: "Times New Roman", times, serif;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  font-size:large;
+  font-style: italic;
+  bottom:50%;
+  transform:translateY(50%)
 }
 
-.shortuserbutton {
+/* .shortuserbutton {
 
   width:30px;
   text-align: center;
   padding:0px;
   margin-top:0px;
+  margin-bottom: 0px;
+  padding: 0px;
   outline-offset: 0px;
-}
+} */
 
 .shortuserbuttoncontainer {
   float:right;
+  width:50%;
+  display:block;
+  bottom:50%;
+  transform:translateY(50%)
+}
+
+@media screen and (max-width: 600px) {
+  .shortuserbuttoncontainer {
+    width:45%;
+  }
+  .shortusertext {
+    width:55%;
+  }
+
+  .list {
+    padding-left: 10px;
+  }
 }
 
 .divider {
@@ -640,33 +776,52 @@ margin:auto;
 
 .arrow {
   display:inline-block;
-  transform:rotate(0deg);
+  transform:rotate(-90deg);
   transition: all 0.5s ease;
 }
 
 .arrowrotate {
-  transform:rotate(-90deg);
+  transform:rotate(0deg);
 }
 
 .modebutton {
   outline: 0px;
   border-radius: 50%;
-  border: 1px dashed black;
-  height: 50px;
-  width:50px;
+  border: 1px solid black;
+  height: 55px;
+  width:55px;
   z-index: 101;
-  bottom: -10px;
   /* transform: translate(-50%, 0); */
   position:fixed;
+  box-shadow:none ;
+  margin: 0px;
+
+
+
 }
 
 .globe {
-  right: 76vw;
+  /* right: 76vw; */
+  bottom:50%;
+  transform: translateY(50%) ;
+  /* left:0px; */
+}
+
+.private {
+  bottom:50%;
+  transform: translateY(50%) ;
+  right:0px;
+}
+
+.account {
+  left:50%;
+  transform: translateX(-50%) ;
+  margin: 0px;
 }
 
 .modebutton img {
-  width:45px;
-  height:45px;
+  width:50px;
+  height:50px;
   margin-left: -18px;
   margin-top: -3px;
 }
@@ -674,14 +829,186 @@ margin:auto;
 .sigCanvas {
   max-width:400px;
   width:100%;
-  height:auto;
-  position:initial;
-  background-color: white;
+  left: 50%;
+    height: auto;
+    position: absolute;
+    transform: translateX(-50%) ;
+  background-color: clear;
+  box-shadow: 0 4px 8px 0 rgba(0, 1, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  transition: all 0.3s ease-in-out
+}
+
+.signatureform {
+  transform: translateY(-10%) rotate(0deg);
+  transition: all 0.5s ease-in-out
+}
+
+.canvasopen {
+  transform: rotate(-4deg);
+
+}
+
+.canvasopen:hover, .canvasopen:active  {
+  transform: rotate(0deg);
+
 }
 
 .ratio {
   display: grid;
+  max-width: 400px;
+    /* left: 50%; */
+  margin: auto;
 }
 .ratio > * {
   grid-area: 1/1;
 }
+
+.row {
+  display: table;
+  max-width: 90%;
+  margin: auto;
+margin-top: -20px;
+
+}
+
+.block {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+  position: relative;
+
+}
+
+h1 {
+  position: relative;
+  display: inline-block;
+  font-family: "Times New Roman", times, serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 1em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 8px 0 rgba(0, 1, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+
+}
+
+
+h1 {
+  position: relative;
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  text-transform: none;
+  font-size: xx-large;
+  text-overflow: ellipsis;
+  font-weight: 100;
+  z-index: 3;
+}
+h1:after, h1:before {
+  content: " ";
+  display: block;
+  position: absolute;
+  bottom: -.5em;
+  width: 1em;
+  height: 100%;
+  background-color: #69c48d;
+  pointer-events: none;
+}
+h1:after {
+  right: -.57em;
+  z-index: -3;
+  box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.2), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+
+}
+h1:before {
+  left: -.57em;
+  z-index: -3;
+  box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.2), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+
+}
+h1 span {
+  display: block;
+  position: relative;
+  padding: .15em .75em;
+  text-decoration: none;
+  color: #192238;
+  white-space: nowrap;
+  background-color: #8ed2a9;
+  max-width:300px;
+  text-overflow: ellipsis;
+}
+.usertext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+h1 span:after, h1 span:before {
+  content: " ";
+  display: block;
+  position: absolute;
+  width: 0;
+  height: 0;
+  bottom: -.5em;
+  left: -.05em;
+  pointer-events: none;
+  -webkit-mask: none;
+}
+h1 span:before {
+  left: -.05em;
+  right: auto;
+  border-top: 0.5em solid #398e5b;
+  border-left: .5em solid transparent;
+}
+h1 span:after {
+  left: auto;
+  right: -.05em;
+  border-top: 0.5em solid #398e5b;
+  border-right: .5em solid transparent;
+  z-index:-2;
+}
+
+.stickerbuttoncontainer {
+  z-index: 3000;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  
+  /* background-color:rgba(242,241,237,0.9); */
+}
+
+.stickerbuttoncontainer button {
+  background-color: rgba(242,241,237,0.9);
+  font-size: xx-large;
+  border-radius: 50%;
+  width:40px;
+  height:40px;
+
+  width: 40px; 
+  height: 40px;
+  border-radius: 50%;
+  display: flex; /* or inline-flex */
+  align-items: center; 
+  justify-content: center;
+}
+
+.shortuserbutton {
+  border-radius: 50%;
+  width: 35px;
+  height:35px;
+  bottom:50%;
+  transform:translateY(-50%);
+  display: inline-flex; /* or inline-flex */
+  align-items: center; 
+  justify-content: center;
+  padding:0px;
+}
+
+ .dismiss {
+  position: absolute;
+  top: -100vh;
+  width: 800vw;
+  left: -100vw;
+  height: 800vw;
+  z-index: -100;
+  background-color: rgb(0,0,0,0.1);
+
+ }

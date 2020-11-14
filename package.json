@@ -19,14 +19,19 @@
     "react-scripts": "3.4.3",
     "react-signature-canvas": "^1.0.3",
     "shaderfrog-runtime": "^0.2.0",
+    "signature_pad": "git+https://github.com/xcelspreadsheet/signature_pad.git",
     "three": "^0.120.1",
     "three.interaction": "^0.2.3"
   },
   "scripts": {
+    "preinstall": "npx npm-force-resolutions",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "resolutions": {
+    "signature_pad": "git+https://github.com/xcelspreadsheet/signature_pad.git"
   },
   "eslintConfig": {
     "extends": "react-app"

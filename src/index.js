@@ -10,16 +10,20 @@ import replyimage from "./images/noun_Reply_70802.png";
 import starimage from "./images/images.png";
 import starimagealpha from "./images/imagesalpha.png";
 import globeimage from "./images/Globe-5.svg";
+import stickerbg from "./images/stickerbg.png";
 import envmap from "./images/envmap.jpg";
 import envmap2 from "./images/envmap2.jpg";
 import scratchmap from "./images/scratchtexture.jpg";
+import papermap from "./images/paper.jpeg";
+import papermap2 from "./images/paper.jpg";
+
 import holographicmap from "./images/MWHG50-XLARGE.jpg";
-import { SpotLight, MeshNormalMaterial } from "three";
+import { SpotLight, MeshNormalMaterial, TorusKnotBufferGeometry } from "three";
 import { FresnelShader } from "./shaders/FresnelShader.js";
 import { Cloudinary } from "cloudinary-core"; // If your code is for ES6 or higher
 import firebase from "firebase";
 import { Interaction } from "three.interaction";
-import Canvas from './canvas';
+// import Canvas from './canvas';
 import CanvasDraw from "react-canvas-draw";
 import SignatureCanvas from 'react-signature-canvas'
 
@@ -27,7 +31,10 @@ import SignatureCanvas from 'react-signature-canvas'
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import scenedata from "./models/daisy.glb";
 
+const type = {reply : "reply", sticker : "sticker", feedphoto : "feedphoto", newphoto: "newphoto"}
+
 var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera()
 var imagewidth = 2;
 var feedheight = 0;
 var bottomoffeed = 0;
@@ -44,6 +51,12 @@ var yRepliesDifferential = {};
 var replyLine = {};
 var replyMeshes = {};
 
+var stickers = []
+var stickerIndex = 0
+var stickerCount = 0
+
+var backDicts = []
+
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
 var primarydarkorange = "fe5b30"
@@ -58,7 +71,7 @@ textureLoader.crossOrigin = "Anonymous";
 
 var grimetexture = async function getGrimeTexture() {
   textureLoader.load(roughnessmap, function (texture) {
-    return texture;
+    return Promise.resolve(texture);
   });
 };
 var daisy = new THREE.Mesh();
@@ -79,6 +92,10 @@ firebase.auth().onAuthStateChanged(function (user) {
   if (user) {
     console.log("AUTH STATE CHANGED");
     console.log(user);
+    if (!user.isAnonymous) {
+      var timeref = firebase.database().ref('stickerusers/' + user.uid + '/time')
+      timeref.set(Date.now())
+    }
     // ...
   } else {
     // User is signed out.
@@ -105,7 +122,7 @@ var cl = new Cloudinary({
   api_secret: "_6igNEblFUeNDo6rMajgIpOH0BU",
 });
 
-document.getElementById("shinebutton").onclick = function () {};
+// document.getElementById("shinebutton").onclick = function () {};
 
 function displayLoginForm() {
   anime({
@@ -157,15 +174,15 @@ function submitFilesinFileInput() {
   }
 }
 
-function handlePhotoUpload() {
-  if (document.getElementById("file-input").files.length > 0 ) {
+function handlePhotoUpload(element) {
+  if (element.files.length > 0 ) {
     let img = new Image();
     img.src = window.URL.createObjectURL(
-      document.getElementById("file-input").files[0]
+      element.files[0]
     );
     img.onload = () => {
       uploadFile(
-        document.getElementById("file-input").files[0],
+        element.files[0],
         img.width,
         img.height,
         "testimages/",
@@ -175,10 +192,11 @@ function handlePhotoUpload() {
   }
 }
 
-document.getElementById("file-input").onchange = function (event) {
+// document.getElementById("file-input").onchange = function (event) {
+function submitOnChange(element, event) {
   console.log("changed");
 
-  if (document.getElementById("file-input").files.length === 0) {
+  if (element.files.length === 0) {
     return;
   }
 
@@ -188,39 +206,41 @@ document.getElementById("file-input").onchange = function (event) {
   //   $("#loginimage").attr("src", e.target.result);
   // };
 
-  reader.readAsDataURL(document.getElementById("file-input").files[0]);
+  reader.readAsDataURL(element.files[0]);
 
-  console.log(document.getElementById("file-input").files[0]);
+  console.log(element.files[0]);
 
   if (firebase.auth().currentUser.isAnonymous === true ) {
     displayLoginForm();
   } else {
-    handlePhotoUpload()
+    handlePhotoUpload(element)
   }
 };
 
 var replyref = "";
 
-document.getElementById("reply-input").onchange = function (event) {
+// document.getElementById("reply-input").onchange = function (event) {
+function replyOnChange(element, event) {
   console.log("changed");
-  console.log(document.getElementById("reply-input").files[0]);
+  console.log(element.files[0]);
+
   if (firebase.auth().currentUser.isAnonymous === true ) {
     displayLoginForm();
   } else {
-    handleReplyUpload()
+    handleReplyUpload(element)
   }
 };
 
-function handleReplyUpload() {
+function handleReplyUpload(element) {
 
-  if (document.getElementById("reply-input").files.length > 0) {
+  if (element.files.length > 0) {
     let img = new Image();
     img.src = window.URL.createObjectURL(
-      document.getElementById("reply-input").files[0]
+      element.files[0]
     );
     img.onload = () => {
       uploadFile(
-        document.getElementById("reply-input").files[0],
+        element.files[0],
         img.width,
         img.height,
         "testimages/" + replyref + "/replies",
@@ -449,8 +469,55 @@ function uploadFile(file, width, height, firebaseref, reply) {
   xhr.send(fd);
 }
 
-function requestLatestPhotos() {
+async function requestLatestStickerUsers() {
+  firebase
+  .database()
+  .ref("stickerusers")
+  .orderByChild('time')
+  .limitToLast(10)
+  .once("value")
+  .then(function (snapshot) {
+    stickers = []
+    snapshot.forEach( function(childSnapshot) {
+      console.log("Sticker " + childSnapshot.val())
+      stickers.push(childSnapshot.val())
+    })
+    console.log(stickers)
+    shuffleArray(stickers)
+    return Promise.resolve(stickers)
+  })
 
+}
+
+async function requestUserPhotos(uid) {
+  clearFeed()
+
+  firebase.database().ref('/testimages/').orderByChild('creator').equalTo(uid)
+    .once("value")
+    .then(function (snapshot) {
+      console.log(snapshot);
+
+      var photosList = [];
+
+      snapshot.forEach(function (childSnapshot) {
+        var childKey = childSnapshot.key;
+        console.log(childKey);
+        var childData = childSnapshot.val();
+        console.log(childData);
+        // ...
+        childData["key"] = childKey;
+        photosList.push(childData);
+      });
+
+        photosList.reverse();
+        setUpNewFeed(photosList)
+      })
+}
+
+async function requestLatestPhotos() {
+
+  stickers = await requestLatestStickerUsers()
+  console.log("Stickers promise " + stickers)
   clearFeed()
 
   firebase
@@ -473,27 +540,63 @@ function requestLatestPhotos() {
         photosList.push(childData);
       });
 
-      photosList.reverse();
-      setUpNewFeed(photosList)
+        photosList.reverse();
+        setUpNewFeed(photosList)
+      })
+      
+      
       // currentPhotosList = photosList
 
       // currentPage = 0
       // generateFeed(paginateArray(currentPhotosList,20,currentPage));
-    });
 }
 
-function setUpNewFeed(photosList) {
+function setUpNewFeed(photosList, stickers) {
   currentPhotosList = photosList
   currentPage = 0
 
   scrollToTop()
 
-  generateFeed(paginateArray(currentPhotosList,20,currentPage));
+  generateFeed(paginateArray(currentPhotosList,20,currentPage), stickers);
 }
 
 function clearFeed() {
   for(var photo of photos) {
-    scene.remove(photo)
+
+    for (var child in photo.children) {
+      if (child.geometry != null) {
+        child.geometry.dispose()
+      }
+      try {
+        child.material.map.dispose()
+      } catch {}
+      try {
+        child.material.roughnessMap.dispose()
+      } catch {}
+      try {
+        child.material.normalMap.dispose()
+      } catch {}
+      try {
+        child.material.dispose()
+      } catch {}
+    }
+
+    photo.geometry.dispose()
+    if (photo.material.map != null) {
+      photo.material.map.dispose()
+    }
+    try {
+      photo.material.roughnessMap.dispose()
+    } catch {}
+    try {
+      photo.material.normalMap.dispose()
+    } catch {}
+    if (photo.material.map != null) {
+      photo.material.map.dispose()
+    }
+    photo.material.dispose()
+    scene.remove(photo, photo.children)
+
   }
 
   replies = {};
@@ -503,6 +606,8 @@ function clearFeed() {
   yRepliesDifferential = {};
   replyLine = {};
    replyMeshes = {};
+   stickerIndex = 0
+   stickerCount = 0
 }
 
 function requestPrivateFeed() {
@@ -561,6 +666,7 @@ function generateFeed(photosList) {
 
   var yvalue = 0;
 
+
   if (scene.getObjectByName( "bottomOfFeed" )) {
     yvalue = scene.getObjectByName( "bottomOfFeed" ).position.y
   }
@@ -607,6 +713,17 @@ function generateFeed(photosList) {
     daisyCount = daisyCount + 1;
 
     yvalue = yvalue - (imagewidth * (photo.height / photo.width)) / 2;
+
+    if (stickerIndex === 2) {
+      yvalue = yvalue - 0.5
+      yvalue = yvalue - (imagewidth * (3/4)) / 2.3
+      createSticker(yvalue, stickers[stickerCount])
+      yvalue = yvalue - (imagewidth * (3/4)) / 2.3
+      stickerCount += 1
+    }
+
+    stickerIndex += 1
+
     // bottomoffeed = yvalue;
 
     // document.getElementById("root").style.height = -bottomoffeed * 125 + "px";
@@ -626,6 +743,53 @@ function generateFeed(photosList) {
 
   }
 
+}
+
+function createSticker(yvalue, stickerobject) {
+  var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
+  var cube = new THREE.Mesh(geometry);
+  var material = new THREE.MeshStandardMaterial()
+  material.roughness = 0
+  cube.type = type.sticker
+  var url = stickerobject.stickerimage
+  cube.material = material
+  cube.castShadow = true
+
+  var textureLoader = new THREE.TextureLoader();
+  textureLoader.crossOrigin = "Anonymous";
+  textureLoader.load(papermap, function (texture) {
+    console.log("TEXTURE LOADED", texture);
+    cube.material.normalMap = texture
+    cube.material.needsUpdate = true;
+    // cube.material = material;
+  })
+
+  textureLoader.load(papermap2, function (texture) {
+    console.log("TEXTURE LOADED", texture);
+    cube.material.roughnessMap = texture
+    cube.material.needsUpdate = true;
+    // cube.material = material;
+  })
+
+  textureLoader.load(url, function (maptexture) {
+    console.log("texture loaded");
+    cube.material.map = maptexture;
+    cube.material.needsUpdate = true;
+  });
+
+  scene.add(cube)
+
+  cube.position.y = yvalue
+  cube.position.z = 0.05
+  cube.position.x = -imagewidth/3.75
+
+  cube.rotation.y = -0.005
+  cube.rotation.z = 0.1
+
+  cube.scale.x = imagewidth * 1.2
+  cube.scale.y = imagewidth * (3/4) * 1.2
+
+  photos.push(cube)
 }
 
 function addDaisy(xvalue, yvalue, daisyRight) {
@@ -676,6 +840,53 @@ function calculateNewFeedSize() {
     var bottomoffeed = -photos[0].position.y || window.innerHeight;
     document.getElementById("root").style.height =
       bottomoffeed * 100 + window.innerHeight + "px";
+  }
+
+  loadUnloadPhotosByCameraDistance()
+}
+
+function loadUnloadPhotosByCameraDistance() {
+  var cameraY = camera.position.y
+  const distanceThreshhold = 10
+  //sortPhotosByYPosition(photos)
+  
+  for (var photo of photos) {
+    if (Math.abs(photo.position.y - cameraY) < distanceThreshhold) {
+      console.log("Loading photo prelim")
+      loadPhoto(photo)
+    } else {
+      console.log("Unloading photo prelim")
+      unloadPhoto(photo)
+    }
+  }
+}
+
+function loadPhoto(photo) {
+
+  if (photo.url) {
+    if (!photo.loaded) {
+      console.log("Loading photo")
+      textureLoader.load(photo.url, function (maptexture) {
+        console.log("texture loaded");
+        photo.material.map = maptexture;
+        photo.material.needsUpdate = true;
+      });
+    }
+    photo.loaded = true
+  }
+}
+
+function unloadPhoto(photo) {
+  if (photo.url) {
+    if (photo.loaded) {
+      if (photo.material.map != null) {
+        var texture = photo.material.map
+        texture.dispose()
+        photo.material.map = null
+        photo.material.needsUpdate = true
+      }
+    }
+    photo.loaded = false
   }
 }
 
@@ -1108,36 +1319,37 @@ function displayReplies(object) {
 
     yvalue = yvalue - (imagewidth * (value.height / value.width)) / 2;
 
-    // value.object.scale.y = (imagewidth * (value.height / value.width))
-    // value.object.position.y = yvalue
-    // value.object.position.z = 1
   });
-
-  // anime({
-  //   targets: object.position,
-  //   x: [
-  //     {
-  //       value: -0.25,
-  //       easing: "easeInOutQuad",
-  //       duration: 200,
-  //       delay: 100,
-  //     },
-  //   ]
-  // })
-
-  //yvalue = yvalue - 0.5;
 
   drawReplyLine(yvalue - object.position.y, midpoints, object);
 
-  yRepliesDifferential[object.name] = yvalue - object.position.y + 0.5;
+  
+
+  var stickerdifferential = 0
+  var nextPhotoDifferential = 0
+
+  sortPhotosByYPosition(photos)
 
   for (var photo of photos) {
+    if (photo.position.y < object.position.y && object.name != "") {
+
+      nextPhotoDifferential = object.scale.y / 2
+      break
+
+    }
+  }
+
+  yRepliesDifferential[object.name] = yvalue - object.position.y + nextPhotoDifferential;
+  
+  for (var photo of photos.reverse()) {
     if (photo.position.y < object.position.y) {
+
+
       anime({
         targets: photo.position,
         y: [
           {
-            value: photo.position.y + yvalue - object.position.y + 0.5,
+            value: photo.position.y + yvalue - object.position.y + nextPhotoDifferential,
             easing: "easeInOutQuad",
             duration: 750,
           },
@@ -1506,6 +1718,8 @@ function createPhoto(
 ) {
   var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
   var cube = new THREE.Mesh(geometry);
+  var material = new THREE.MeshStandardMaterial()
+  cube.material = material
 
   var height = photo.height;
   var width = photo.width;
@@ -1516,10 +1730,10 @@ function createPhoto(
   textureLoader.crossOrigin = "Anonymous";
   textureLoader.load(roughnessmap, function (texture) {
     console.log("TEXTURE LOADED", texture);
-    var material = new THREE.MeshStandardMaterial({
-      roughnessMap: texture,
+
+      cube.material.roughnessMap = texture
+      cube.material.needsUpdate = true
     });
-    cube.material = material;
     // cube.rotation.x = -0.1;
     // cube.rotation.y = -0.2;
 
@@ -1558,7 +1772,13 @@ function createPhoto(
         ],
       });
 
+      cube.url = url
+      cube.loaded = false
+
       addStarsRefs(cube,key)
+      addPhotoClickEvent(cube)
+      addBadge(username, "#fe5b30", cube, photo.creator);
+
 
     } else if (newphoto) {
       cube.position.z = photozposition;
@@ -1600,7 +1820,13 @@ function createPhoto(
         },
       });
 
+      cube.url = url
+      cube.loaded = false
+
       addStarsRefs(cube,key)
+      addPhotoClickEvent(cube)
+      addBadge(username, "#fe5b30", cube, photo.creator);
+
 
     } else if (newreply) {
       cube.position.x = xposition + 5;
@@ -1640,15 +1866,20 @@ function createPhoto(
           addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
         },
       });
+
+      textureLoader.load(url, function (texture) {
+        console.log("TEXTURE LOADED", texture);
+    
+          cube.material.map = texture
+          cube.material.needsUpdate = true
+        });
+
+        var color =
+      "#" +
+      interpolateColors(primarywhite, "3773B3", 0.25);
+      addBadge(username, color, cube, photo.creator);
+
     }
-
-
-
-    cube.cursor = "pointer";
-    cube.on("click", (ev) => {
-      console.log(ev);
-      handlePhotoMouseDown(ev);
-    });
 
     //cube.position.z = photozposition;
 
@@ -1673,17 +1904,18 @@ function createPhoto(
         });
     }
 
-    textureLoader.load(url, function (maptexture) {
-      console.log("texture loaded");
-      cube.material.map = maptexture;
-      cube.material.needsUpdate = true;
+
+
+    // textureLoader.load(url, function (maptexture) {
+    //   console.log("texture loaded");
+    //   cube.material.map = maptexture;
+    //   cube.material.needsUpdate = true;
 
       
-    });
+    // });
 
-    addBadge(username, "#fe5b30", cube, photo.creator);
 
-  });
+
 
   var addRandomNumber = (Math.random() * 0.1) / 2;
   var addTimeRandomNumber = Math.random() * 200;
@@ -1696,6 +1928,14 @@ function createPhoto(
   calculateNewFeedSize()
 
   return cube;
+}
+
+function addPhotoClickEvent(cube) {
+  cube.cursor = "pointer";
+  cube.on("click", (ev) => {
+    console.log(ev);
+    handlePhotoMouseDown(ev);
+  });
 }
 
 function addStarsRefs(cube, key) {
@@ -1957,7 +2197,7 @@ class ThreeJS extends Component {
     // === THREE.JS CODE START ===
     var rotationmodifier = 0.0001;
 
-    var camera = new THREE.PerspectiveCamera(
+    camera = new THREE.PerspectiveCamera(
       50,
       window.innerWidth / window.innerHeight,
       0.1,
@@ -1974,7 +2214,7 @@ class ThreeJS extends Component {
     renderer.setSize(window.innerWidth, window.innerHeight);
     this.mount.appendChild(renderer.domElement);
 
-    var geometry = new THREE.PlaneGeometry(200, 200, 200);
+    var geometry = new THREE.PlaneGeometry(800, 800, 800);
     var material = new THREE.ShadowMaterial({
       color: 0x666666,
       side: THREE.DoubleSide,
@@ -2123,6 +2363,7 @@ class ThreeJS extends Component {
     spotLight.shadow.radius = 10;
 
     spotLight.target.position.set(0, 0, 0);
+    //spotLight.shadow.bias = -0.0005
     camera.add(spotLight);
     spotLight.position.set(0, 5, 10);
 
@@ -2130,12 +2371,11 @@ class ThreeJS extends Component {
 
     var light2 = new THREE.DirectionalLight(0xfff1db); // soft white light
     light2.intensity = 0.25;
+    //light2.shadow.bias = -0.0005
+
     camera.add(light2);
     light2.position.set(0, -9.5, 10);
     //camera.add(light2);
-
-    var scene2 = new THREE.Scene();
-    scene2 = scene.clone();
 
     var animate = function () {
       requestAnimationFrame(animate);
@@ -2174,6 +2414,8 @@ class ThreeJS extends Component {
     })();
     window.onscroll = function () {
       scrollCam();
+      loadUnloadPhotosByCameraDistance()
+      console.log(renderer.info)
 
       // @var int totalPageHeight
       var totalPageHeight = document.body.scrollHeight; 
@@ -2250,29 +2492,249 @@ class ThreeJS extends Component {
   }
 }
 
+function addToBackDict(photosList, stickers,div,title) {
+  div.classList.add('sentBack')
+  var newBackDict = {
+    'div': div,
+    'photosList' : photosList,
+    'stickers' : stickers,
+    'title' : title
+  }
+  backDicts.push(newBackDict)
+}
+
 class AccountForm extends Component {
 
   constructor() {
     super();
     this.state = {
+      formDisplay: false,
+      strokeCount: 0
     };
+    this.dismissForm = this.dismissForm.bind(this)
+    this.stickerForm = React.createRef()
+    this.accountForm = React.createRef()
+    this.signOut = this.signOut.bind(this)
+    this.addStroke = this.addStroke.bind(this)
+    this.clearStroke = this.clearStroke.bind(this)
+    this.requestUserPhotos = this.requestUserPhotos.bind(this)
+  }
+
+  addStroke() {
+    this.setState({
+      strokeCount: this.state.strokeCount + 1
+    })
+    console.log(this.state.strokeCount)
+  }
+
+  clearStroke() {
+    this.setState({
+      strokeCount: 0
+    })
+  }
+
+  dismissForm() {
+    if (this.state.strokeCount > 0 ) {
+      this.stickerForm.current.submit()
+    }
+
+    this.setState({
+      formDisplay:false,
+    })
+    this.clearStroke()
+  }
+
+  showForm() {
+    this.setState({
+      formDisplay:true
+    })
+  }
+
+  signOut() {
+    signOut()
+    this.setState({
+      formDisplay:false
+    })
+
+  }
+
+  requestUserPhotos() {
+    addToBackDict(currentPhotosList, stickers, this.accountForm.current,this.props.currentTitle)
+    requestUserPhotos(firebase.auth().currentUser.uid)
+    this.props.setCurrentTitle(firebase.auth().currentUser.displayName)
   }
 
   render() {
     return (
-      <div className="accountform">
+      <div ref={this.accountForm} className={"accountform " +
+      (this.state.formDisplay
+        ? "accountformopen"
+        : "")}>
+        <div className="stickerheader">
         <div className="ratio">  <svg viewBox="0 0 4 3"></svg>
 {/* <CanvasDraw imgSrc="" canvasHeight="300" canvasWidth="400" style={{background:"rgb(0,0,0,0)", height:"300px", width:"400px"}} brushRadius={1} hideGrid={true} brushColor="#00000" lazyRadius={1} hideInterface={true}/>  */}
-<SignatureCanvas canvasProps={{width: 400, height: 300, className: 'sigCanvas'}}></SignatureCanvas>
+{/* <SignatureCanvas canvasProps={{width: 400, height: 300, className: 'sigCanvas'}}></SignatureCanvas> */}
+<StickerForm formDisplay={this.state.formDisplay} ref={this.stickerForm} addStroke={this.addStroke}/>
         </div>
-        <div className="accountimagecontainer"><img src={this.props.loggedInUser['userimage'] || ""}></img></div>
-        <div className="userinfo"><div className="username">{this.props.loggedInUser['username']||''}</div>
+        <div class="row">
+  <div class="block">
+    <h1>
+      <span><div className="usertext">{this.props.loggedInUser['username']||''}</div></span>
+    </h1>
+   </div>
+</div>
+</div>
+       <div className="accountreadout">
+         <div className="toolbarcontainer">
+      <button id="title" onClick={this.requestUserPhotos}>&#x25B7; View Photos</button>
+
+       <button id="title" onClick={this.signOut}>&#9789; Sign Out</button>
+       
+       </div>
+    <ShortUserList setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></ShortUserList>
     </div>
-    <ShortUserList></ShortUserList>
+    <div className="accountreadouttriangle"></div>
+    <div className="dismiss" onClick={this.dismissForm}></div>
       </div>
     );
   }
 
+}
+
+
+function uploadSticker(file) {
+  var url = `https://api.cloudinary.com/v1_1/cathedralapp/upload`;
+  var xhr = new XMLHttpRequest();
+  var fd = new FormData();
+
+  xhr.open("POST", url, true);
+  xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+  xhr.onreadystatechange = function (e) {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var response = JSON.parse(xhr.responseText);
+
+      console.log("UPLOADED")
+
+      var url = response.secure_url;
+      console.log(url);
+
+      const sigRef = firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/stickerimage');
+      sigRef.set(url)
+
+      const userRef = firebase.database().ref('stickerusers/' + firebase.auth().currentUser.uid  + '/stickerimage')
+      userRef.set(url)
+    }
+  }
+  
+
+  fd.append("upload_preset", "sunshinesticker");
+  fd.append("tags", "browser_upload"); // Optional - add tag for image admin in Cloudinary
+  fd.append("file", file);
+  xhr.send(fd);
+}
+
+async function getBase64ImageFromUrl(imageUrl) {
+  var res = await fetch(imageUrl);
+  var blob = await res.blob();
+
+  return new Promise((resolve, reject) => {
+    var reader  = new FileReader();
+    reader.addEventListener("load", function () {
+        resolve(reader.result);
+    }, false);
+
+    reader.onerror = () => {
+      return reject(this);
+    };
+    reader.readAsDataURL(blob);
+  })
+}
+
+class StickerForm extends Component {
+  
+  constructor() {
+    super()
+    this.sigCanvas = React.createRef()
+    this.undo = this.undo.bind(this)
+    this.submit = this.submit.bind(this)
+  }
+
+  componentDidMount() {
+
+    var component = this
+
+    var canvas = this.sigCanvas.current.getCanvas()
+    var ctx = canvas.getContext('2d')
+
+    var image = new Image()
+
+    image.crossOrigin = "anonymous"
+
+    image.onload = function() {
+      ctx.drawImage(image,0,0,400,300)
+    }
+
+    image.src = stickerbg
+
+    firebase.auth().onAuthStateChanged( function(user) {
+
+      firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/stickerimage').once('value').then(function(snapshot) {
+        console.log("saved image")
+        console.log(snapshot.val())
+
+        var canvas = component.sigCanvas.current.getCanvas()
+        var ctx = canvas.getContext('2d')
+
+        var image = new Image()
+
+        image.crossOrigin = "anonymous"
+
+        image.onload = function() {
+          ctx.drawImage(image,0,0,400,300)
+        }
+
+        image.src = snapshot.val()
+
+      })
+    })
+  }
+
+  undo() {
+    // console.log(this.sigCanvas.current)
+    // this.sigCanvas.current.clear()
+    var canvas = this.sigCanvas.current.getCanvas()
+    var ctx = canvas.getContext('2d')
+    var image = new Image()
+
+    image.crossOrigin = "anonymous"
+
+    image.onload = function() {
+      ctx.drawImage(image,0,0,400,300)
+    }
+
+    image.src = stickerbg
+    firebase.database().ref('users/' + firebase.auth().currentUser.uid + '/stickerimage').remove()
+  }
+
+  submit() {
+    var image = this.sigCanvas.current.toDataURL("image/png")
+    uploadSticker(image)
+    var points = this.sigCanvas.current.toData()
+    console.log(points)
+  }
+
+
+  render() {
+    return (
+      <div className={"signatureform " + (this.props.formDisplay
+      ? "canvasopen"
+      : "")} >
+<SignatureCanvas onEnd={this.props.addStroke} ref={this.sigCanvas} canvasProps={{width: 400, height: 300, className: 'sigCanvas'}}></SignatureCanvas>
+<div className="stickerbuttoncontainer"><button onClick={this.undo}>&#x27f2;</button></div>
+        </div>
+    );
+  }
 }
 
 
@@ -2619,13 +3081,19 @@ class ShortUser extends Component {
     })
   }
 
+  requestUserPhotos() {
+    addToBackDict(currentPhotosList, stickers, this.props.accountForm,this.props.currentTitle)
+    requestUserPhotos(this.props.uid)
+    this.props.setCurrentTitle(this.state.displayName)
+  }
+
   render() {
     return (
       <div className="shortuser" id={this.props.uid}>
         <div className="shortusertext">{this.state.displayName}</div>
         <div className="shortuserbuttoncontainer">
         <button className="shortuserbutton plus">+</button>
-        <button className="shortuserbutton minus">-</button>
+        <button className="shortuserbutton" onClick={this.requestUserPhotos.bind(this)}>&#x25B7;</button>
         </div>
       </div>
     );
@@ -2689,15 +3157,15 @@ class ShortUserList extends Component {
 
   render() {
     var shortUsers = this.state.uidList.map((d) => 
-    <ShortUser uid={d} key={d}></ShortUser>);
+    <ShortUser setCurrentTitle={this.props.setCurrentTitle} accountForm={this.props.accountForm} currentTitle={this.props.currentTitle} uid={d} key={d}></ShortUser>);
 
     return (
       <div className="shortuserlist">
       
-      <div onClick={() => this.toggleMenu()} className="listtitle">FOLLOWING <div className={"arrow " +
-                (this.state.menuOpen
-                  ? "arrowrotate"
-                  : "")}>&#11071;</div></div>
+      <div onClick={() => this.toggleMenu()} className="listtitle"><div></div>FOLLOWING <div className={"arrow " +
+                  (this.state.menuOpen
+                    ? "arrowrotate"
+                    : "")}>&#x25BE;</div></div>
       <div  className={"list " +
                 (this.state.menuOpen
                   ? "listexpanded"
@@ -2720,8 +3188,14 @@ class App extends Component {
       loginbuttonvisible: false,
       isAnonymous: true,
       loggedInUser: {},
-      currentUser: {}
+      currentUser: {},
+      currentTitle: {}
     };
+
+    this.accountForm = React.createRef()
+    this.goBack = this.goBack.bind(this)
+    this.submitInput = React.createRef()
+    this.replyInput = React.createRef()
   }
 
   componentDidMount() {
@@ -2802,9 +3276,7 @@ class App extends Component {
     });
   }
 
-  signOut() {
-    signOut()
-  }
+
 
   requestPrivateFeed() {
     requestPrivateFeed()
@@ -2814,18 +3286,73 @@ class App extends Component {
     requestLatestPhotos()
   }
 
+  signOut() {
+    signOut()
+  }
+
+  showAccountForm() {
+    this.accountForm.current.showForm()
+    // this.accountForm.current.accountForm.current.classList.remove('sentBack')
+  }
+
+  goBack() {
+    var backDict = backDicts.pop()
+    if (backDict != undefined) {
+      clearFeed()
+      setUpNewFeed(backDict.photosList,backDict.stickers)
+      this.setState({
+        'title':backDict.title
+      })
+      backDict.div.classList.remove('sentBack')
+    }
+  }
+
+  setCurrentTitle(title) {
+    this.setState({
+      'title':title
+    })
+  }
+
+  submitInputOnChange(event) {
+    submitOnChange(this.submitInput.current, event)
+    console.log("Submit input")
+  }
+
+  replyInputOnChange(event) {
+    replyOnChange(this.replyInput.current, event)
+  }
 
   render() {
     return (
       <div>
             <div class="title" >
     <div class="titletext" >SUNSHINE</div>
-    <div id="progress" className="progress"></div>
-    <button id="title" onClick={this.signOut.bind(this)}>Sign Out</button>
-    <button id="requestprivate" onClick={this.requestPrivateFeed.bind(this)}>Private</button>
-    <button className="modebutton globe" id="requestpublic" onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
+    <div id="progress" className="progress">
+    <div className="backTitle " style={this.state.title ? {'opacity':'1', 'transform':'translateX(-20px)'} : {'opacity':'0', 'transform':'translateX(20px)'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.title ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.title ? this.state.title : ""}</div>
     </div>
-    <AccountForm loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    <br></br>
+    <br></br>
+
+
+    </div>
+    <div className="modeBar">
+    <button className="modebutton globe" id="requestpublic" onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
+    <button className="modebutton private" onClick={this.requestPrivateFeed.bind(this)}>Private</button>
+    <button className="modebutton account" onClick={this.showAccountForm.bind(this)}>account</button>
+
+    <div className="shinebutton" id="shinebutton">
+      <input onChange={this.submitInputOnChange.bind(this)} ref={this.submitInput} type="file" accept="image/*" id="file-input"/>
+      <label for="file-input"><img
+        src="/images/8-Point-Star_black_void.svg"
+      /></label>
+    </div>
+    <div className="replyinput">
+      <input onChange={this.replyInputOnChange.bind(this)} ref={this.replyInput} type="file" accept="image/*" id="reply-input"/>
+      <label for="reply-input"></label>
+    </div>
+
+    </div>
+    <AccountForm setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
       <div id="root">
         <div className="threejs">
           <ThreeJS />
@@ -2847,7 +3374,7 @@ ReactDOM.render(<App />, rootElement);
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
 // Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.unregister();
+serviceWorker.register();
 
 function interpolateColors(color1, color2, ratio) {
   var hex = function (x) {
@@ -2895,3 +3422,10 @@ const scrollToTop = () => {
 function paginateArray(array, page_size, page_number) {
   return array.slice(page_number * page_size, page_number * page_size + page_size);
 };
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+  }
+}
