@@ -2601,6 +2601,14 @@ class AccountForm extends Component {
 
 }
 
+function fadeOutPhotos() {
+  scene.opacity = 0
+}
+
+function fadeInPhotos() {
+  scene.opacity = 1
+}
+
 
 function uploadSticker(file) {
   var url = `https://api.cloudinary.com/v1_1/cathedralapp/upload`;
@@ -3330,9 +3338,7 @@ class App extends Component {
     <div id="progress" className="progress">
     <div className="backTitle " style={this.state.title ? {'opacity':'1', 'transform':'translateX(-20px)'} : {'opacity':'0', 'transform':'translateX(20px)'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.title ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.title ? this.state.title : ""}</div>
     </div>
-    <br></br>
-    <br></br>
-
+    <AccountForm setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
 
     </div>
     <div className="modeBar">
@@ -3352,7 +3358,6 @@ class App extends Component {
     </div>
 
     </div>
-    <AccountForm setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
       <div id="root">
         <div className="threejs">
           <ThreeJS />

@@ -589,17 +589,11 @@ margin:auto;
 }
 
 .accountform {
-  position: fixed;
-  background: rgb(0, 0, 0, 0);
-  width: 90vw;
-  height: 80vh;
+  background: rgb(0, 0, 0, 0,0);
   /* top: 20%; */
   max-width: 380px;
   overflow-y: visible;
   overflow-x: visible;
-  left: 50%;
-  top: 45%;
-  transform: translate(-50%, -50%);
   z-index: -1000;
   pointer-events: none;
   opacity: 0;
@@ -609,15 +603,13 @@ margin:auto;
 .accountformopen {
   pointer-events: all;
   opacity: 1;
-  top: 43%;
   z-index:2000;
 }
 
 .accountreadout {
   box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
   /* background: radial-gradient(circle at top center, rgba(55,115,179,1) -50%, rgba(242,241,237,1) 65%); */
-  background-color:rgba(242,241,237,1);
-  width:98%;
+  background-color:rgba(242,241,237,0);
   padding-top:100px;
   margin-left:1%;
   margin-top:-100px;
@@ -828,7 +820,7 @@ margin-top: -1px;
 
 .sigCanvas {
   max-width:400px;
-  width:100%;
+  width:90%;
   left: 50%;
     height: auto;
     position: absolute;
