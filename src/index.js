@@ -144,6 +144,7 @@ function successLoginForm() {
   anime({
     targets: ".logindialog",
     top: [{ value: "-200%", easing: "easeInOutQuad", duration: 600 }],
+    delay: 2000
   });
   // submitFilesinFileInput();
 }
@@ -512,7 +513,7 @@ async function requestUserPhotos(uid) {
       });
 
         photosList.reverse();
-        setUpNewFeed(photosList, undefined, animationType.fromright)
+        setUpNewFeed(photosList, undefined, animationType.fromright, 0)
       })
 }
 
@@ -1804,7 +1805,7 @@ function createPhoto(
     if (photoAnimationType === animationType.fromleft) {
       cube.position.z = photozposition;
       cube.position.x = xposition - 8
-      cube.position.y = yposition + 0.75
+      cube.position.y = yposition + 1.5
       cube.rotation.z = -0.5;
     
 
@@ -1826,6 +1827,13 @@ function createPhoto(
             value: xposition,
           },
         ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 1800,
+        delay: anime.random(0, 150)
+      });
+
+      anime({
+        targets: cube.position,
         y: [
           {
             value: yposition,
@@ -1866,13 +1874,20 @@ function createPhoto(
             value: xposition,
           },
         ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 1800,
+        delay: anime.random(0, 150)
+      });
+
+      anime({
+        targets: cube.position,
         y: [
           {
             value: yposition,
           },
         ],
         easing: "spring(1, 80, 20, 0)",
-        duration: 2000,
+        duration: 1800 ,
         complete: function () {
           var addRandomNumber = (Math.random() * 0.1) / 2;
           var addTimeRandomNumber = Math.random() * 200;
@@ -2004,7 +2019,7 @@ function addBadge(username, color, object, uid) {
     anime({
       targets: object.rotation,
       x:  object.rotation.x + 0.05,
-      y: object.rotation.y + 0.09,
+      y: object.rotation.y + 0.12,
       easing: 'easeOutElastic',
       duration:transitionTime + 200,
       direction:'alternate',
@@ -2013,15 +2028,26 @@ function addBadge(username, color, object, uid) {
 
      }})
 
+    anime({
+      targets: object.position,
+      x:  object.position.x - 0.25,
+      easing: 'easeInQuad',
+      duration:transitionTime/2,
+     complete: function() {
+      // handleFollow(uid);
+
+     }})
+
      setTimeout(function() {
-      addToBackDict(currentPhotosList, stickers, null,window.App.state.currentTitle)
+      addToBackDict(currentPhotosList, stickers, null,window.App.state.currentTitle, uid)
       transitionPhotosLeft(photos)
 
       setTimeout(function() { 
         requestUserPhotos(uid)
       }, transitionTime - 100);  
       window.App.setState({
-        currentTitle:username
+        currentTitle:username,
+        currentTitleUid: uid
       })
      }, transitionTime/2)
 
@@ -2523,7 +2549,7 @@ class ThreeJS extends Component {
   }
 }
 
-function addToBackDict(photosList, stickers,div,title) {
+function addToBackDict(photosList, stickers,div,title, uid) {
   if (div) {
    div.classList.add('sentBack')
   }
@@ -2532,7 +2558,8 @@ function addToBackDict(photosList, stickers,div,title) {
     'photosList' : photosList,
     'stickers' : stickers,
     'title' : title,
-    'scroll': window.scrollY
+    'scroll': window.scrollY,
+    'uid' : uid
   }
   backDicts.push(newBackDict)
   window.App.setState({
@@ -2598,11 +2625,13 @@ class AccountForm extends Component {
     })
     this.props.maximizeUI()
     this.props.dismissAccountForm()
-
+    this.props.loginForm.current.setState({
+        success:false
+    })
   }
 
   requestUserPhotos(uid, displayName) {
-    addToBackDict(currentPhotosList, stickers, this.accountForm.current,this.props.currentTitle)
+    addToBackDict(currentPhotosList, stickers, this.accountForm.current,this.props.currentTitle, this.props.currentTitleUid)
 
 
     transitionPhotosLeft(photos)
@@ -2611,7 +2640,7 @@ class AccountForm extends Component {
       requestUserPhotos(uid)
     }, transitionTime - 100);    
 
-    this.props.setCurrentTitle(displayName)
+    this.props.setCurrentTitle(displayName, uid)
     this.props.dismissAccountForm()
   }
 
@@ -2807,6 +2836,7 @@ class LoginForm extends Component {
       error: false,
       usernameexists: false,
       tryingtologin: false,
+      success: false
     };
     this.handleChange = this.handleChange.bind(this);
     this.handlePassword = this.handlePassword.bind(this);
@@ -2899,7 +2929,10 @@ class LoginForm extends Component {
                 tryingtologin: false,
               });
               successLoginForm()
-              component.handleUpload();
+              component.setState({
+                success:true
+              })
+              component.props.handleUpload();
             })
             .catch(function (error) {
               // Handle Errors here.
@@ -2951,7 +2984,10 @@ class LoginForm extends Component {
           });
 
           successLoginForm()
-          component.handleUpload();
+          component.setState({
+            success:true
+          })
+          component.props.handleUpload();
         })
         .catch(function (error) {
           component.setState({
@@ -3008,8 +3044,8 @@ class LoginForm extends Component {
         <div
           className="loginform"
           style={{
-            maxHeight: this.props.isAnonymous ? "800px" : "0px",
-            overflow: this.props.isAnonymous ? "visible" : "hidden",
+            maxHeight: !this.state.success ? "800px" : "0px",
+            overflow: !this.state.success ? "visible" : "hidden",
           }}
         >
           <div class="floating-label">
@@ -3103,7 +3139,7 @@ class LoginForm extends Component {
         <div
           className={
             "backgroundlogin " +
-            (this.props.isAnonymous ? "" : "backgroundloginfadein")
+            (!this.state.success ? "" : "backgroundloginfadein")
           }
         ></div>
 
@@ -3118,7 +3154,7 @@ class ShortUser extends Component {
     super();
     this.state = {
       displayName: "",
-      following: true
+      isFollowing: true
     };
   }
 
@@ -3132,9 +3168,9 @@ class ShortUser extends Component {
     .database()
     .ref("users/" + this.props.uid)
     .on('value', function (snapshot) {
-      console.log(snapshot.val().username)
+      //console.log(snapshot.val().username)
       component.setState({
-        displayName:snapshot.val().username,
+        displayName:snapshot.val().username || "",
       })
     })
   }
@@ -3145,12 +3181,27 @@ class ShortUser extends Component {
     this.props.setCurrentTitle(this.state.displayName)
   }
 
+  handleFollow() {
+    handleFollow(this.props.uid)
+    this.setState({
+      isFollowing:true
+    })
+  }
+
+  handleUnfollow() {
+    handleUnfollow(this.props.uid)
+    this.setState({
+      isFollowing:false
+    })
+  }
+
   render() {
     return (
-      <div className="shortuser" id={this.props.uid}>
-        <div className="shortusertext">{this.state.displayName}</div>
+      <div className="shortuser" id={this.props.uid} >
+        <div onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)} className="shortusertext">{this.state.displayName}</div>
         <div className="shortuserbuttoncontainer">
-        <button className="shortuserbutton plus">+</button>
+        <button style={this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleUnfollow.bind(this)} className="shortuserbutton plus">&#65293;</button>
+        <button style={!this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleFollow.bind(this)} className="shortuserbutton plus">&#65291;</button>
         <button className="shortuserbutton" onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)}>&#x25B7;</button>
         </div>
       </div>
@@ -3174,7 +3225,7 @@ class ShortUserList extends Component {
       firebase
       .database()
       .ref("following/" + uid)
-      .on('value', function (snapshot) {
+      .once('value', function (snapshot) {
 
         var newUids = []
 
@@ -3248,20 +3299,32 @@ function transitionPhotosRight(photos) {
     //     },
     //   ],
     // });
+
+    anime({
+      targets: photo.rotation,
+      z: [
+        {
+          value: 0.15,
+        },
+      ],
+      easing: "spring(1, 80, 20, 0)",
+      duration: 3000
+    });
     anime({
       targets: photo.position,
       x: [
         {
           value: photo.position.x + 5,
-          easing: "easeInQuad",
-          duration: transitionTime,
+          easing: "spring(1, 80, 20, 0)",
+          duration: transitionTime * 200,
+          delay: anime.random(0,150)
         },
       ],
       y: [
         {
           value: photo.position.y - 1.5,
-          easing: "easeInQuad",
-          duration: transitionTime,
+          easing: "spring(1, 80, 20, 0)",
+          duration: transitionTime * 200,
         },
       ],
     });
@@ -3280,25 +3343,40 @@ function transitionPhotosLeft(photos) {
     //     },
     //   ],
     // });
+
+     anime({
+        targets: photo.rotation,
+        z: [
+          {
+            value: -0.15,
+          },
+        ],
+        easing: "spring(1, 80, 20, 0)",
+        duration: 3000
+      });
+
     anime({
       targets: photo.position,
       x: [
         {
           value: photo.position.x - 5,
-          easing: "easeInQuad",
-          duration: transitionTime,
+          easing: "spring(1, 80, 20, 0)",
+          duration: transitionTime * 200,
+          delay: anime.random(0,150)
         },
       ],
       y: [
         {
-          value: photo.position.y - 1.5,
-          easing: "easeInQuad",
-          duration: transitionTime,
+          value: photo.position.y + 1.5,
+          easing: "spring(1, 80, 20, 0)",
+          duration: transitionTime * 200,
         },
       ],
     });
   }
 }
+
+var uploadStyle= "submit"
 
 class App extends Component {
   constructor(props) {
@@ -3312,10 +3390,13 @@ class App extends Component {
       loggedInUser: {},
       currentUser: {},
       currentTitle: "",
+      currentTitleUid: "",
       minimalUI: false,
-      accountFormOpen: false
+      accountFormOpen: false,
+      currentTitleUidFollowing: true
     };
     window.App = this;
+    this.loginForm = React.createRef()
     this.accountForm = React.createRef()
     this.goBack = this.goBack.bind(this)
     this.submitInput = React.createRef()
@@ -3343,6 +3424,8 @@ class App extends Component {
         );
 
         //Get more info to add to the account form
+        if (user.isAnonymous) {
+        }
 
         if (!user.isAnonymous) {
 
@@ -3371,6 +3454,8 @@ class App extends Component {
             var errorMessage = error.message;
             console.log(errorMessage);
           });
+
+
       }
       // ...
     });
@@ -3435,7 +3520,7 @@ class App extends Component {
   goBack() {
     var backDict = backDicts.pop()
     var showingAccountForm = false
-    if (backDict != undefined) {
+    if (backDict !== undefined) {
 
       transitionPhotosRight(photos)
 
@@ -3444,8 +3529,14 @@ class App extends Component {
         setUpNewFeed(backDict.photosList,backDict.stickers, animationType.fromleft, backDict.scroll)
       }, transitionTime - 100);
 
+      var backDictUid = ""
+      if(backDict.uid) {
+        backDictUid = backDict.uid
+      }
+
       this.setState({
-        currentTitle:backDict.title
+        currentTitle:backDict.title,
+        currentTitleUid: backDictUid
       })
 
       if (backDict.div) {
@@ -3461,26 +3552,31 @@ class App extends Component {
 
     if (backDicts.length === 0 && !showingAccountForm) {
       this.setState({
-        minimalUI:false
+        minimalUI:false,
+        currentTitle:"",
+        currentTitleUid:""
       })
     }
 
   }
 
-  setCurrentTitle(title) {
+  setCurrentTitle(title, uid) {
     console.log("TITLE " + title)
     this.setState({
-      currentTitle:title
+      currentTitle:title,
+      currentTitleUid: uid
     }, () => {
       console.log(this.state.currentTitle)})
   }
 
   submitInputOnChange(event) {
+    uploadStyle= "submit"
     submitOnChange(this.submitInput.current, event)
     console.log("Submit input")
   }
 
   replyInputOnChange(event) {
+    uploadStyle= "reply"
     replyOnChange(this.replyInput.current, event)
   }
 
@@ -3500,6 +3596,43 @@ class App extends Component {
     this.accountForm.current.dismissForm()
   }
 
+  handleUpload() {
+
+    const component = this
+
+    setTimeout(function() {
+      if (uploadStyle === "submit") {
+        handlePhotoUpload(component.submitInput.current)
+      } else if (uploadStyle === "reply") {
+        handleReplyUpload(component.replyInput.current)
+      }
+    }, 100)
+  }
+
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    var component = this
+    console.log(prevState.currentTitleUid)
+    console.log(this.state.currentTitleUid)
+
+    if( this.state.currentTitleUid !== "") {
+      var newUidRef= firebase.database().ref('/following/' + firebase.auth().currentUser.uid + '/' + this.state.currentTitleUid)
+      newUidRef.once('value', function(snapshot) {
+        console.log(snapshot)
+
+        if (snapshot.exists()) {
+          component.setState({
+            currentTitleUidFollowing:true
+          })
+
+      } else {
+        component.setState({
+          currentTitleUidFollowing:false
+        })
+      }
+      })
+    }
+  }
+
   render() {
     return (
       <div>
@@ -3511,18 +3644,18 @@ class App extends Component {
     </div> 
     <div id="progress" className="progress">
     </div>
-    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto"}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>X</button>
+    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto", bottom: '15px'}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>X</button>
 
-    <div className="backTitle " style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}</div>
+    <div className="backTitle " style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}<button className="titleFollowButton" onClick={() => handleFollow(this.state.currentTitleUid)} style={this.state.currentTitleUid && !this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Follow</button></div>
 
-    <AccountForm dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    <AccountForm loginForm={this.loginForm} dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
 
     </div>
 
-    <div className="modeBar" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1,pointerEvents:"all"}}>
-    <button className="modebutton globe" id="requestpublic" onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
-    <button className="modebutton private" onClick={this.requestPrivateFeed.bind(this)}>Private</button>
-    <button className="modebutton account" onClick={this.showAccountForm.bind(this)}>account</button>
+    <div className="modeBar" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1}}>
+    <button className="modebutton globe" id="requestpublic" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
+    <button className="modebutton private" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPrivateFeed.bind(this)}>Private</button>
+    <button className="modebutton account" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.showAccountForm.bind(this)}>account</button>
 
     <div className="shinebutton" id="shinebutton">
       <input onChange={this.submitInputOnChange.bind(this)} ref={this.submitInput} type="file" accept="image/*" id="file-input"/>
@@ -3541,10 +3674,12 @@ class App extends Component {
           <ThreeJS />
         </div>
         <LoginForm
+          ref={this.loginForm}
           closeloginform={this.loginFormHide.bind(this)}
           register={this.register.bind(this)}
           signIn={this.signIn.bind(this)}
           isAnonymous={this.state.isAnonymous}
+          handleUpload={this.handleUpload.bind(this)}
         />
       </div>
       </div>
