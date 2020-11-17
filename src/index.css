@@ -7,6 +7,12 @@ body {
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 code {
@@ -22,16 +28,22 @@ code {
 .title {
   font-family: OttoAttac, serif;
   color: rgb(0, 0, 0);
+  display: flex;
   position: fixed;
+  top: 0;
   left: 0;
+  right: 0;
+  flex-flow: column;
   font-size: 18vw;
   overflow:visible;
-
+  width:100%;
+  height: 100%;
   top: 0;
-  width: 100vw;
+  /* width: 100vw;
+  height:100vh; */
   /* pointer-events: none; */
   overflow: hidden;
-  padding-bottom: -5px;
+  /* padding-bottom: -5px; */
   padding-top: 10px;
   z-index: 100;
   /* border-bottom-width: 10px; */
@@ -41,8 +53,7 @@ code {
 
 .titletext {
   border-bottom: 1px solid black;
-
-
+  flex: 0 1 auto;
 }
 
 
@@ -82,6 +93,9 @@ code {
   height: 240px;
   z-index:101;
   bottom:-100px;
+  transition: opacity 0.2s ease-in-out;
+  pointer-events:none;
+
 }
 
 .shinebutton {
@@ -98,6 +112,10 @@ code {
     bottom:0px;
 
 
+}
+
+.shinebutton:active {
+  opacity: 0.5;
 }
 
 .shinebutton>input {
@@ -146,12 +164,12 @@ code {
 
 
 .threejs {
-  background: rgb(253, 185, 67);
+  /* background: rgb(253, 185, 67);
   background: radial-gradient(
     circle at bottom center,
     rgba(253, 185, 67, 1) 30%,
     rgba(230, 227, 218, 0.5) 60%
-  );
+  ); */
 }
 
 .threejs {
@@ -161,6 +179,26 @@ code {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.background {
+  background: rgb(253, 185, 67);
+  background: radial-gradient(
+    circle at bottom center,
+    rgba(253, 185, 67, 1) 30%,
+    rgba(230, 227, 218, 0.5) 60%
+  );
+}
+
+.background {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index:-1000;
 }
 
 .backgroundcanvas canvas {
@@ -300,7 +338,12 @@ button {
   outline-offset: 5px;
   box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
   margin:6px;
+  /* transition: opacity 0.1 ease-in-out; */
 
+}
+
+button:active {
+  opacity:0.5;
 }
 
 .logindialog {
@@ -347,8 +390,8 @@ button {
     /* When the animation is finished, start again */
     opacity:1;
     animation-iteration-count: infinite;
-    outline: 1px solid black;
-    outline-offset: 5px;
+    /* outline: 1px solid black;
+    outline-offset: 5px; */
 }
 
   .cancelbutton {
@@ -458,7 +501,8 @@ height: 0px;
   width: 0%;
   height: 3px;
   background-color: rgb(253, 185, 67);
-
+overflow:hidden;
+margin-bottom:-2px
 }
 
 
@@ -536,8 +580,8 @@ margin:auto;
 }
 
 .sentBack {
-  transition: 0.5s all ease-in-out !important;
-  left: 40% !important;
+  transition: 0.3s all ease-in-out !important;
+  transform:translateX(-20px) !important;
     opacity: 0 !important;
   pointer-events: none !important;
 }
@@ -550,23 +594,27 @@ margin:auto;
 } */
 
 .backTitle {
-  font-family: OttoAttac, serif;
+  font-family: 'Times New Roman', Times, serif;
+  font-style:italic;
   color: rgb(0, 0, 0);
   font-size: 10vw;
   overflow:visible;
   width: 100vw;
+  max-height: 0px;
   /* left:50%;
   transform: translateX(-50%); */
   white-space: nowrap;
   text-overflow: ellipsis;
   pointer-events: none;
-  overflow: hidden;
   padding-bottom: -5px;
   padding-top: 10px;
   z-index: 100;
   /* border-bottom-width: 10px; */
   text-align: center;
-  transition: 0.5s all ease-in-out;
+  transition: 0.5s opacity ease-in-out;
+  transition: 0.2s max-height ease-in-out;
+
+
 }
 
 @media screen and (min-width: 600px) {
@@ -591,19 +639,29 @@ margin:auto;
 .accountform {
   background: rgb(0, 0, 0, 0,0);
   /* top: 20%; */
+  /* position:relative; */
+  align-self: center;
+  flex: 1 1 auto;
+  /* left:50%;
+  transform: translateX(-50%); */
   max-width: 380px;
-  overflow-y: visible;
-  overflow-x: visible;
+  overflow-y: scroll;
+  overflow-x: hidden;
   z-index: -1000;
   pointer-events: none;
   opacity: 0;
-  transition: 0.5s ease-in-out all;
+  transition: 0.3s ease-in-out all;
+  padding-top:10px;
+  padding-bottom:15vh;
+  mask-image: linear-gradient(to bottom, black 85%, transparent 90%);
+  transform:translateY(20px);
 }
 
 .accountformopen {
   pointer-events: all;
   opacity: 1;
   z-index:2000;
+  transform:none;
 }
 
 .accountreadout {
@@ -633,14 +691,19 @@ margin-top: -1px;
 
 
 .toolbarcontainer {
-  margin:30px;
+  margin-left:30px;
+  margin-right:30px;
+  margin-top:15px;
+  margin-bottom:15px;
+
 }
 
 .toolbarcontainer button {
   width:100%;
   padding:10px;
   margin:0px;
-  margin-bottom: 10px;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 
 .accountimagecontainer {
@@ -671,15 +734,23 @@ margin-top: -1px;
 .shortuserlist {
   width: 100%;
   display: inline-block;
-  padding: 30px;
+  padding-left: 30px;
+  padding-right: 30px;
+  padding-top: 15px;
+  padding-bottom:15px;
+
 }
 
 .shortuser {
-  border-top: 1px solid lightgray;
+  border-top: 1px solid rgb(1,1,1,0.2);
 
   display:flex;
   /* padding-top:10px; */
   padding-bottom:20px;
+}
+
+.shortuser:first-child {
+  border-top: none;
 }
 
 .listtitle {
@@ -690,7 +761,8 @@ margin-top: -1px;
   padding-top:10px;
   padding-bottom:10px;
   letter-spacing: 0.15em;
-  /* font-family: 'Times New Roman', Times, serif; */
+  text-align: left;
+  font-family: 'Helvetica Neue';
   /* font-style: italic; */
   text-transform: uppercase;
   /* padding-left:30px; */
@@ -715,14 +787,15 @@ margin-top: -1px;
 }
 
 .shortusertext {
-  width:60%;
+  width: 60%;
   font-family: "Times New Roman", times, serif;
   text-overflow: ellipsis;
   overflow: hidden;
-  font-size:large;
+  text-align: left;
+  font-size: large;
   font-style: italic;
-  bottom:50%;
-  transform:translateY(50%)
+  bottom: 50%;
+  transform: translateY(50%);
 }
 
 /* .shortuserbutton {
@@ -737,11 +810,11 @@ margin-top: -1px;
 } */
 
 .shortuserbuttoncontainer {
-  float:right;
-  width:50%;
-  display:block;
-  bottom:50%;
-  transform:translateY(50%)
+  float: right;
+  width: 50%;
+  display: block;
+  /* bottom: 50%; */
+  /* transform: translateY(50%); */
 }
 
 @media screen and (max-width: 600px) {
@@ -792,6 +865,51 @@ margin-top: -1px;
 
 }
 
+.topToolbar {
+
+}
+
+.accountShow {
+  margin-top:15px;
+  left: 60vw;
+  pointer-events: all;
+  z-index:3000;
+  margin-left:0px;
+  margin-right: 0px;
+  position:fixed;
+}
+
+.closeAccountButton {
+  /* left:10px;
+  top: 10px; */
+  /* flex: 0 1 40px; */
+  z-index: 20000;
+  position:absolute;
+bottom:15px;
+left:50%;
+transform:translateX(-50%);
+}
+
+.line {
+  height:1px;
+  border-bottom: 1px solid black;
+
+}
+
+.leftLine {
+  left:0px;
+width:55%;
+  border-bottom: 1px solid red;
+}
+
+.rightLine {
+right: 0px;
+  width:40%;
+  border-bottom: 1px solid blue;
+
+
+}
+
 .globe {
   /* right: 76vw; */
   bottom:50%;
@@ -831,12 +949,13 @@ margin-top: -1px;
 }
 
 .signatureform {
-  transform: translateY(-10%) rotate(0deg);
-  transition: all 0.5s ease-in-out
+  transform: translateY(10px) rotate(-2deg);
+  transition: all 0.2s ease-in-out;
+  margin-top: 15px;
 }
 
 .canvasopen {
-  transform: rotate(-4deg);
+  transform: translateY(0px) rotate(-4deg);
 
 }
 
@@ -986,8 +1105,8 @@ h1 span:after {
   border-radius: 50%;
   width: 35px;
   height:35px;
-  bottom:50%;
-  transform:translateY(-50%);
+  /* bottom:50%;
+  transform:translateY(-50%); */
   display: inline-flex; /* or inline-flex */
   align-items: center; 
   justify-content: center;

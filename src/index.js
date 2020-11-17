@@ -32,6 +32,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import scenedata from "./models/daisy.glb";
 
 const type = {reply : "reply", sticker : "sticker", feedphoto : "feedphoto", newphoto: "newphoto"}
+const animationType = {fromright:"fromright", fromleft:"fromleft", fromabove:"fromabove"}
 
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera()
@@ -56,6 +57,7 @@ var stickerIndex = 0
 var stickerCount = 0
 
 var backDicts = []
+const transitionTime = 500
 
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
@@ -341,9 +343,8 @@ function uploadFile(file, width, height, firebaseref, reply) {
               // 3,
               photodata.creatorusername,
               photodata,
-              false,
-              true,
-              false
+              type.newphoto,
+              animationType.fromleft
             );
 
             scrollToTop();
@@ -393,10 +394,11 @@ function uploadFile(file, width, height, firebaseref, reply) {
               replyy,
               photodata.creatorusername,
               photodata,
-              false,
-              false,
-              true
+              type.newreply,
+              animationType.fromright
             );
+
+            var notificationRef = firebase.database().ref('/notifications/' + photodata.creator)
 
             photodata.object = newphoto;
             if (replies[replyref]) {
@@ -510,7 +512,7 @@ async function requestUserPhotos(uid) {
       });
 
         photosList.reverse();
-        setUpNewFeed(photosList)
+        setUpNewFeed(photosList, undefined, animationType.fromright)
       })
 }
 
@@ -541,7 +543,7 @@ async function requestLatestPhotos() {
       });
 
         photosList.reverse();
-        setUpNewFeed(photosList)
+        setUpNewFeed(photosList, undefined, animationType.fromleft)
       })
       
       
@@ -551,13 +553,17 @@ async function requestLatestPhotos() {
       // generateFeed(paginateArray(currentPhotosList,20,currentPage));
 }
 
-function setUpNewFeed(photosList, stickers) {
+function setUpNewFeed(photosList, stickers, feedAnimationType, scrollSet) {
   currentPhotosList = photosList
   currentPage = 0
 
-  scrollToTop()
+  if (scrollSet === undefined) {
+    scrollToTop() 
+  } else {
+    window.scrollTo(0,scrollSet)
+  }
 
-  generateFeed(paginateArray(currentPhotosList,20,currentPage), stickers);
+  generateFeed(paginateArray(currentPhotosList,20,currentPage), stickers, feedAnimationType);
 }
 
 function clearFeed() {
@@ -648,7 +654,7 @@ function requestPrivateFeed() {
 
         if(firebaseCount === snapshotLength) {
           photosList.reverse();
-          setUpNewFeed(photosList)
+          setUpNewFeed(photosList,undefined,animationType.fromleft)
         }
       })
     });
@@ -660,12 +666,13 @@ function requestPrivateFeed() {
 var daisyCount = -1;
 var daisyRight = true;
 
-function generateFeed(photosList) {
+function generateFeed(photosList, stickers, feedAnimationType) {
   console.log("Generating feed")
  //clearFeed()
 
   var yvalue = 0;
 
+  //yvalue = 1.25 - ((imagewidth * (photosList[0].height / photosList[0].width)) /2)
 
   if (scene.getObjectByName( "bottomOfFeed" )) {
     yvalue = scene.getObjectByName( "bottomOfFeed" ).position.y
@@ -684,7 +691,7 @@ function generateFeed(photosList) {
       username = photo.creatorusername;
     }
 
-    createPhoto(photo.url, 0, yvalue, username, photo, true, false, false);
+    createPhoto(photo.url, 0, yvalue, username, photo, type.feedphoto, feedAnimationType);
 
     if (daisyCount === 0) {
       addDaisy(
@@ -717,7 +724,7 @@ function generateFeed(photosList) {
     if (stickerIndex === 2) {
       yvalue = yvalue - 0.5
       yvalue = yvalue - (imagewidth * (3/4)) / 2.3
-      createSticker(yvalue, stickers[stickerCount])
+      // createSticker(yvalue, stickers[stickerCount])
       yvalue = yvalue - (imagewidth * (3/4)) / 2.3
       stickerCount += 1
     }
@@ -1706,12 +1713,16 @@ function addMoveStar(parentobject, starKey, xposition, yposition) {
 }
 
 
+
+
 function createPhoto(
   url,
   xposition,
   yposition,
   username,
   photo,
+  photoType,
+  photoAnimationType,
   feedphoto,
   newphoto,
   newreply
@@ -1724,7 +1735,6 @@ function createPhoto(
   var height = photo.height;
   var width = photo.width;
   var key = photo.key;
-  var replyholder = new THREE.Mesh();
 
   var textureLoader = new THREE.TextureLoader();
   textureLoader.crossOrigin = "Anonymous";
@@ -1746,7 +1756,7 @@ function createPhoto(
     cube.position.y = yposition;
     cube.position.x = xposition;
 
-    if (feedphoto) {
+    if (photoAnimationType === animationType.fromabove) {
       cube.position.z = 5;
       cube.material.opacity = 0;
 
@@ -1772,6 +1782,15 @@ function createPhoto(
         ],
       });
 
+      var addRandomNumber = (Math.random() * 0.1) / 2;
+      var addTimeRandomNumber = Math.random() * 200;
+    
+    
+      addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
+    }
+
+    if (photoType === type.feedphoto || photoType === type.newphoto) {
+
       cube.url = url
       cube.loaded = false
 
@@ -1780,10 +1799,12 @@ function createPhoto(
       addBadge(username, "#fe5b30", cube, photo.creator);
 
 
-    } else if (newphoto) {
+    } 
+    
+    if (photoAnimationType === animationType.fromleft) {
       cube.position.z = photozposition;
-      cube.position.x = xposition - 5
-      cube.position.y = yposition + 3
+      cube.position.x = xposition - 8
+      cube.position.y = yposition + 0.75
       cube.rotation.z = -0.5;
     
 
@@ -1795,23 +1816,23 @@ function createPhoto(
           },
         ],
         easing: "spring(1, 80, 20, 0)",
-        duration: 2000,
+        duration: 3000
       });
 
       anime({
         targets: cube.position,
         x: [
           {
-            value: yposition,
+            value: xposition,
           },
         ],
         y: [
           {
-            value: xposition,
+            value: yposition,
           },
         ],
         easing: "spring(1, 80, 20, 0)",
-        duration: 800 + (-yposition * 100),
+        duration: 1800 ,
         complete: function () {
           var addRandomNumber = (Math.random() * 0.1) / 2;
           var addTimeRandomNumber = Math.random() * 200;
@@ -1819,18 +1840,11 @@ function createPhoto(
           addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
         },
       });
+    }
 
-      cube.url = url
-      cube.loaded = false
-
-      addStarsRefs(cube,key)
-      addPhotoClickEvent(cube)
-      addBadge(username, "#fe5b30", cube, photo.creator);
-
-
-    } else if (newreply) {
-      cube.position.x = xposition + 5;
-      cube.position.y = yposition + 3;
+    if (photoAnimationType === animationType.fromright) {
+      cube.position.x = xposition + 8;
+      cube.position.y = yposition + 0.75;
       cube.position.z = photozposition;
       cube.rotation.z = -0.5;
 
@@ -1866,6 +1880,9 @@ function createPhoto(
           addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
         },
       });
+    }
+
+    if (photoType === type.newreply) {
 
       textureLoader.load(url, function (texture) {
         console.log("TEXTURE LOADED", texture);
@@ -1913,17 +1930,6 @@ function createPhoto(
 
       
     // });
-
-
-
-
-  var addRandomNumber = (Math.random() * 0.1) / 2;
-  var addTimeRandomNumber = Math.random() * 200;
-
-  if (feedphoto) {
-    addRotationAnimation(cube, addRandomNumber, addTimeRandomNumber);
-
-  }
 
   calculateNewFeedSize()
 
@@ -1994,7 +2000,32 @@ function addBadge(username, color, object, uid) {
   mesh.cursor = "pointer";
   mesh.on("click", (ev) => {
     console.log(ev);
-    handleFollow(uid);
+
+    anime({
+      targets: object.rotation,
+      x:  object.rotation.x + 0.05,
+      y: object.rotation.y + 0.09,
+      easing: 'easeOutElastic',
+      duration:transitionTime + 200,
+      direction:'alternate',
+     complete: function() {
+      // handleFollow(uid);
+
+     }})
+
+     setTimeout(function() {
+      addToBackDict(currentPhotosList, stickers, null,window.App.state.currentTitle)
+      transitionPhotosLeft(photos)
+
+      setTimeout(function() { 
+        requestUserPhotos(uid)
+      }, transitionTime - 100);  
+      window.App.setState({
+        currentTitle:username
+      })
+     }, transitionTime/2)
+
+
   });
 
 
@@ -2351,8 +2382,8 @@ class ThreeJS extends Component {
 
     const shadowmapmultiplier = 3;
 
-    spotLight.shadow.mapSize.width = 1024 * 2;
-    spotLight.shadow.mapSize.height = 1024 * 2;
+    spotLight.shadow.mapSize.width = 1024 * 2.5;
+    spotLight.shadow.mapSize.height = 1024 * 2.5;
 
     const d = 10;
 
@@ -2428,7 +2459,7 @@ class ThreeJS extends Component {
       {
           console.log("at the bottom");
           currentPage += 1
-          generateFeed(paginateArray(currentPhotosList,20,currentPage))
+          generateFeed(paginateArray(currentPhotosList,20,currentPage),undefined,animationType.fromleft)
       }
     };
 
@@ -2493,14 +2524,20 @@ class ThreeJS extends Component {
 }
 
 function addToBackDict(photosList, stickers,div,title) {
-  div.classList.add('sentBack')
+  if (div) {
+   div.classList.add('sentBack')
+  }
   var newBackDict = {
     'div': div,
     'photosList' : photosList,
     'stickers' : stickers,
-    'title' : title
+    'title' : title,
+    'scroll': window.scrollY
   }
   backDicts.push(newBackDict)
+  window.App.setState({
+    minimalUI:true
+  })
 }
 
 class AccountForm extends Component {
@@ -2541,7 +2578,11 @@ class AccountForm extends Component {
     this.setState({
       formDisplay:false,
     })
+
+    this.props.dismissAccountForm()
+
     this.clearStroke()
+    this.props.maximizeUI()
   }
 
   showForm() {
@@ -2555,13 +2596,23 @@ class AccountForm extends Component {
     this.setState({
       formDisplay:false
     })
+    this.props.maximizeUI()
+    this.props.dismissAccountForm()
 
   }
 
-  requestUserPhotos() {
+  requestUserPhotos(uid, displayName) {
     addToBackDict(currentPhotosList, stickers, this.accountForm.current,this.props.currentTitle)
-    requestUserPhotos(firebase.auth().currentUser.uid)
-    this.props.setCurrentTitle(firebase.auth().currentUser.displayName)
+
+
+    transitionPhotosLeft(photos)
+
+    setTimeout(function() { 
+      requestUserPhotos(uid)
+    }, transitionTime - 100);    
+
+    this.props.setCurrentTitle(displayName)
+    this.props.dismissAccountForm()
   }
 
   render() {
@@ -2584,17 +2635,16 @@ class AccountForm extends Component {
    </div>
 </div>
 </div>
-       <div className="accountreadout">
-         <div className="toolbarcontainer">
-      <button id="title" onClick={this.requestUserPhotos}>&#x25B7; View Photos</button>
+       {/* <div className="accountreadout"> */}
+       <ShortUserList requestUserPhotos={this.requestUserPhotos.bind(this)} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></ShortUserList>
 
+         <div className="toolbarcontainer">
+      <button id="title" onClick={() => this.requestUserPhotos(firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName)}>&#x25B7; View Photos</button>
        <button id="title" onClick={this.signOut}>&#9789; Sign Out</button>
        
        </div>
-    <ShortUserList setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></ShortUserList>
-    </div>
-    <div className="accountreadouttriangle"></div>
-    <div className="dismiss" onClick={this.dismissForm}></div>
+    {/* </div> */}
+    {/* <div className="dismiss" onClick={this.dismissForm}></div> */}
       </div>
     );
   }
@@ -3101,7 +3151,7 @@ class ShortUser extends Component {
         <div className="shortusertext">{this.state.displayName}</div>
         <div className="shortuserbuttoncontainer">
         <button className="shortuserbutton plus">+</button>
-        <button className="shortuserbutton" onClick={this.requestUserPhotos.bind(this)}>&#x25B7;</button>
+        <button className="shortuserbutton" onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)}>&#x25B7;</button>
         </div>
       </div>
     );
@@ -3165,7 +3215,7 @@ class ShortUserList extends Component {
 
   render() {
     var shortUsers = this.state.uidList.map((d) => 
-    <ShortUser setCurrentTitle={this.props.setCurrentTitle} accountForm={this.props.accountForm} currentTitle={this.props.currentTitle} uid={d} key={d}></ShortUser>);
+    <ShortUser requestUserPhotos={this.props.requestUserPhotos} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.props.accountForm} currentTitle={this.props.currentTitle} uid={d} key={d}></ShortUser>);
 
     return (
       <div className="shortuserlist">
@@ -3186,6 +3236,70 @@ class ShortUserList extends Component {
   }
 }
 
+function transitionPhotosRight(photos) {
+  for(var photo of photos) {
+    // anime({
+    //   targets: photo.material,
+    //   opacity: [
+    //     {
+    //       value: 0,
+    //       easing: "easeInQuad",
+    //       duration: transitionTime - 100,
+    //     },
+    //   ],
+    // });
+    anime({
+      targets: photo.position,
+      x: [
+        {
+          value: photo.position.x + 5,
+          easing: "easeInQuad",
+          duration: transitionTime,
+        },
+      ],
+      y: [
+        {
+          value: photo.position.y - 1.5,
+          easing: "easeInQuad",
+          duration: transitionTime,
+        },
+      ],
+    });
+  }
+}
+
+function transitionPhotosLeft(photos) {
+  for(var photo of photos) {
+    // anime({
+    //   targets: photo.material,
+    //   opacity: [
+    //     {
+    //       value: 0,
+    //       easing: "easeInQuad",
+    //       duration: transitionTime - 100,
+    //     },
+    //   ],
+    // });
+    anime({
+      targets: photo.position,
+      x: [
+        {
+          value: photo.position.x - 5,
+          easing: "easeInQuad",
+          duration: transitionTime,
+        },
+      ],
+      y: [
+        {
+          value: photo.position.y - 1.5,
+          easing: "easeInQuad",
+          duration: transitionTime,
+        },
+      ],
+    });
+  }
+}
+
 class App extends Component {
   constructor(props) {
     super();
@@ -3197,9 +3311,11 @@ class App extends Component {
       isAnonymous: true,
       loggedInUser: {},
       currentUser: {},
-      currentTitle: {}
+      currentTitle: "",
+      minimalUI: false,
+      accountFormOpen: false
     };
-
+    window.App = this;
     this.accountForm = React.createRef()
     this.goBack = this.goBack.bind(this)
     this.submitInput = React.createRef()
@@ -3299,26 +3415,64 @@ class App extends Component {
   }
 
   showAccountForm() {
+    this.minizeUI()
     this.accountForm.current.showForm()
+    this.setState({
+      accountFormOpen:true
+    })
+    // this.accountForm.current.accountForm.current.classList.remove('sentBack')
+  }
+
+  dismissAccountForm() {
+    // this.minizeUI()
+    // this.accountForm.current.showForm()
+    this.setState({
+      accountFormOpen:false
+    })
     // this.accountForm.current.accountForm.current.classList.remove('sentBack')
   }
 
   goBack() {
     var backDict = backDicts.pop()
+    var showingAccountForm = false
     if (backDict != undefined) {
-      clearFeed()
-      setUpNewFeed(backDict.photosList,backDict.stickers)
+
+      transitionPhotosRight(photos)
+
+      setTimeout(function() { 
+        clearFeed()
+        setUpNewFeed(backDict.photosList,backDict.stickers, animationType.fromleft, backDict.scroll)
+      }, transitionTime - 100);
+
       this.setState({
-        'title':backDict.title
+        currentTitle:backDict.title
       })
-      backDict.div.classList.remove('sentBack')
+
+      if (backDict.div) {
+        backDict.div.classList.remove('sentBack')
+        if (backDict.div.className.includes("accountform")) {
+          showingAccountForm = true
+          this.setState({
+            accountFormOpen:true
+           })
+        }
+      }
     }
+
+    if (backDicts.length === 0 && !showingAccountForm) {
+      this.setState({
+        minimalUI:false
+      })
+    }
+
   }
 
   setCurrentTitle(title) {
+    console.log("TITLE " + title)
     this.setState({
-      'title':title
-    })
+      currentTitle:title
+    }, () => {
+      console.log(this.state.currentTitle)})
   }
 
   submitInputOnChange(event) {
@@ -3330,18 +3484,42 @@ class App extends Component {
     replyOnChange(this.replyInput.current, event)
   }
 
+  minizeUI() {
+    this.setState({
+      minimalUI:true
+    })
+  }
+
+  maximizeUI() {
+    this.setState({
+      minimalUI:false
+    })
+  }
+
+  closeAccountButton() {
+    this.accountForm.current.dismissForm()
+  }
+
   render() {
     return (
       <div>
             <div class="title" >
     <div class="titletext" >SUNSHINE</div>
+    <div className="topToolbar">
+      {/* <button className="modebutton accountShow" onClick={this.showAccountForm.bind(this)}>account</button>  */}
+    {/* <div className="line leftLine"></div> <div className="line rightLine"></div> */}
+    </div> 
     <div id="progress" className="progress">
-    <div className="backTitle " style={this.state.title ? {'opacity':'1', 'transform':'translateX(-20px)'} : {'opacity':'0', 'transform':'translateX(20px)'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.title ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.title ? this.state.title : ""}</div>
     </div>
-    <AccountForm setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto"}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>X</button>
+
+    <div className="backTitle " style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}</div>
+
+    <AccountForm dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
 
     </div>
-    <div className="modeBar">
+
+    <div className="modeBar" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1,pointerEvents:"all"}}>
     <button className="modebutton globe" id="requestpublic" onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
     <button className="modebutton private" onClick={this.requestPrivateFeed.bind(this)}>Private</button>
     <button className="modebutton account" onClick={this.showAccountForm.bind(this)}>account</button>
@@ -3359,7 +3537,7 @@ class App extends Component {
 
     </div>
       <div id="root">
-        <div className="threejs">
+        <div className="threejs" style={this.state.accountFormOpen ? {opacity:0,pointerEvents:"none",overflow:"hidden" }: {opacity:1,pointerEvents:"all", overflow:"auto"}}>
           <ThreeJS />
         </div>
         <LoginForm
