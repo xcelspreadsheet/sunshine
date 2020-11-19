@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/sunshine/static/css/main.65c86190.chunk.css",
-    "main.js": "/sunshine/static/js/main.bdb2d9ad.chunk.js",
-    "main.js.map": "/sunshine/static/js/main.bdb2d9ad.chunk.js.map",
+    "main.js": "/sunshine/static/js/main.70f32876.chunk.js",
+    "main.js.map": "/sunshine/static/js/main.70f32876.chunk.js.map",
     "runtime-main.js": "/sunshine/static/js/runtime-main.f375007d.js",
     "runtime-main.js.map": "/sunshine/static/js/runtime-main.f375007d.js.map",
     "static/js/2.42b30efd.chunk.js": "/sunshine/static/js/2.42b30efd.chunk.js",
     "static/js/2.42b30efd.chunk.js.map": "/sunshine/static/js/2.42b30efd.chunk.js.map",
     "index.html": "/sunshine/index.html",
-    "precache-manifest.237ac7479e7b80ea04723f1a03999def.js": "/sunshine/precache-manifest.237ac7479e7b80ea04723f1a03999def.js",
+    "precache-manifest.887ed9f73650d3edd708ce71ecfb2e43.js": "/sunshine/precache-manifest.887ed9f73650d3edd708ce71ecfb2e43.js",
     "service-worker.js": "/sunshine/service-worker.js",
     "static/css/main.65c86190.chunk.css.map": "/sunshine/static/css/main.65c86190.chunk.css.map",
     "static/js/2.42b30efd.chunk.js.LICENSE.txt": "/sunshine/static/js/2.42b30efd.chunk.js.LICENSE.txt",
@@ -30,6 +30,6 @@
     "static/js/runtime-main.f375007d.js",
     "static/js/2.42b30efd.chunk.js",
     "static/css/main.65c86190.chunk.css",
-    "static/js/main.bdb2d9ad.chunk.js"
+    "static/js/main.70f32876.chunk.js"
   ]
 }
