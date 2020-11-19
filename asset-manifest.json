@@ -1,6 +1,6 @@
 {
   "files": {
-    "main.css": "/sunshine/static/css/main.60d11404.chunk.css",
+    "main.css": "/sunshine/static/css/main.65c86190.chunk.css",
     "main.js": "/sunshine/static/js/main.bdb2d9ad.chunk.js",
     "main.js.map": "/sunshine/static/js/main.bdb2d9ad.chunk.js.map",
     "runtime-main.js": "/sunshine/static/js/runtime-main.f375007d.js",
@@ -8,9 +8,9 @@
     "static/js/2.42b30efd.chunk.js": "/sunshine/static/js/2.42b30efd.chunk.js",
     "static/js/2.42b30efd.chunk.js.map": "/sunshine/static/js/2.42b30efd.chunk.js.map",
     "index.html": "/sunshine/index.html",
-    "precache-manifest.ebec95fcdbf9c8cdf981a904b8513364.js": "/sunshine/precache-manifest.ebec95fcdbf9c8cdf981a904b8513364.js",
+    "precache-manifest.237ac7479e7b80ea04723f1a03999def.js": "/sunshine/precache-manifest.237ac7479e7b80ea04723f1a03999def.js",
     "service-worker.js": "/sunshine/service-worker.js",
-    "static/css/main.60d11404.chunk.css.map": "/sunshine/static/css/main.60d11404.chunk.css.map",
+    "static/css/main.65c86190.chunk.css.map": "/sunshine/static/css/main.65c86190.chunk.css.map",
     "static/js/2.42b30efd.chunk.js.LICENSE.txt": "/sunshine/static/js/2.42b30efd.chunk.js.LICENSE.txt",
     "static/media/8-Point-Star_black_void.svg": "/sunshine/static/media/8-Point-Star_black_void.144d18cf.svg",
     "static/media/Globe-5.svg": "/sunshine/static/media/Globe-5.592510fe.svg",
@@ -29,7 +29,7 @@
   "entrypoints": [
     "static/js/runtime-main.f375007d.js",
     "static/js/2.42b30efd.chunk.js",
-    "static/css/main.60d11404.chunk.css",
+    "static/css/main.65c86190.chunk.css",
     "static/js/main.bdb2d9ad.chunk.js"
   ]
 }
