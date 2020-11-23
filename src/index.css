@@ -45,7 +45,7 @@ code {
   overflow: hidden;
   /* padding-bottom: -5px; */
   padding-top: 10px;
-  z-index: 100;
+  z-index: 80000;
   /* border-bottom-width: 10px; */
   text-align: center;
   pointer-events: none;
@@ -358,7 +358,7 @@ button:active {
   padding: 40px;
   overflow-y:scroll; 
   overflow-x:hidden;
-  z-index:2000;
+  z-index:80001;
   transform: translateY(-200%); 
   height: auto;
   max-height:90%;
@@ -503,14 +503,48 @@ height: 0px;
 
 .progress {
   width: 0%;
-  height: 3px;
+  height: 6px;
   background-color: rgb(253, 185, 67);
-overflow:hidden;
-margin-bottom:-2px
+overflow:visible;
+z-index:800000;
+box-shadow: 0 2px 4px 0 rgb(253, 185, 67, 0.2), 0 3px 10px 0 rgb(253, 185, 67, 0.29);
+
+margin-bottom:-3px
 }
 
+.accountNotificationDot {
+  position: absolute;
 
+  top: 2px;
+  right: -1px;
 
+}
+
+.notificationDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #fe5b30;
+  pointer-events: none;
+}
+
+.onNotification {
+  position: relative;
+  display:inline-block;
+  top:15px;
+  left:33px;
+  z-index: 1;
+  margin-right:-14px;
+}
+
+.menuNotificationDot {
+  display: inline-block;
+  /* margin: auto; */
+  margin-left: -3px;
+  /* margin-top: -5px; */
+  transform: translateY(-6px);
+
+}
 
 .uploadbutton img {
   height:30px;
@@ -597,6 +631,18 @@ margin:auto;
   pointer-events: none !important;
 } */
 
+.notificationImage {
+  height: 40px;
+    width: 40px;
+    margin-right:15px;
+
+    display: inline;
+    bottom: 50%;
+    transform: translateY(50%);
+    box-shadow: 0 2px 4px 0 rgba(0, 1, 0, 0.1), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
+    object-fit: cover;
+}
+
 .backTitle {
   font-family: 'Times New Roman', Times, serif;
   font-style:italic;
@@ -644,6 +690,7 @@ margin:auto;
   width: 60px; 
   /* height: 40px; */
   border-radius: 50%;
+  font-style: normal;
   /* border:1px solid black; */
   display: flex; 
   align-items: center; 
@@ -657,17 +704,18 @@ margin:auto;
   /* position:relative; */
   align-self: center;
   flex: 1 1 auto;
+  
   /* left:50%;
   transform: translateX(-50%); */
   max-width: 380px;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   z-index: -1000;
   pointer-events: none;
   opacity: 0;
   transition: 0.3s ease-in-out all;
   padding-top:10px;
-  padding-bottom:15vh;
+  padding-bottom:75px;
   mask-image: linear-gradient(to bottom, black 85%, transparent 90%);
   transform:translateY(20px);
 }
@@ -677,7 +725,7 @@ margin:auto;
 
   pointer-events: all;
   opacity: 1;
-  z-index:2000;
+  /* z-index:2000; */
   transform:none;
 }
 
@@ -721,6 +769,8 @@ margin-top: -1px;
   margin:0px;
   margin-top: 0px;
   margin-bottom: 0px;
+  display:block;
+  height:60px;
 }
 
 .accountimagecontainer {
@@ -758,12 +808,18 @@ margin-top: -1px;
 
 }
 
+.shortuserlist:first-of-type {
+  margin-top:50px;
+}
+
 .shortuser {
   border-top: 1px solid rgb(1,1,1,0.2);
-
+  margin-left:5px;
   display:flex;
   /* padding-top:10px; */
-  padding-bottom:20px;
+padding-top:0px;
+padding-bottom:0px;
+height:90px;
 }
 
 .shortuser:active {
@@ -773,6 +829,7 @@ margin-top: -1px;
 
 .shortuser:first-child {
   border-top: none;
+  /* margin-top:-15px; */
 }
 
 .listtitle {
@@ -787,6 +844,9 @@ margin-top: -1px;
   font-family: 'Helvetica Neue';
   /* font-style: italic; */
   text-transform: uppercase;
+  /* position:sticky;
+  top:0px; */
+
   /* padding-left:30px; */
   /* padding-bottom: 10px; */
 }
@@ -809,6 +869,8 @@ margin-top: -1px;
 }
 
 .shortusertext {
+margin:auto;
+margin-left:0px;
   width: 60%;
   font-family: "Times New Roman", times, serif;
   text-overflow: ellipsis;
@@ -816,8 +878,7 @@ margin-top: -1px;
   text-align: left;
   font-size: large;
   font-style: italic;
-  bottom: 50%;
-  transform: translateY(50%);
+
 }
 
 /* .shortuserbutton {
@@ -834,9 +895,22 @@ margin-top: -1px;
 .shortuserbuttoncontainer {
   float: right;
   width: 50%;
+  height:100%;
   display: block;
+  margin:auto;
   /* bottom: 50%; */
   /* transform: translateY(50%); */
+}
+
+.buttonsymbol  {
+  float: left;
+    padding-left: 20px;
+    margin-right: -20px;
+    width:10px;
+    display: flex; /* or inline-flex */
+    align-items: center; 
+    justify-content: center;
+    display:none;
 }
 
 @media screen and (max-width: 600px) {
@@ -865,6 +939,8 @@ margin-top: -1px;
   display:inline-block;
   transform:rotate(-90deg);
   transition: all 0.5s ease;
+  float:right;
+  margin-right: 5px;
 }
 
 .arrowrotate {
@@ -872,9 +948,8 @@ margin-top: -1px;
 }
 
 .modebutton {
-  outline: 0px;
+  
   border-radius: 50%;
-  border: 1px solid black;
   height: 55px;
   width:55px;
   z-index: 101;
@@ -882,9 +957,10 @@ margin-top: -1px;
   position:fixed;
   box-shadow:none ;
   margin: 0px;
+}
 
-
-
+.modebuttonactive {
+  border: 1px solid black;
 }
 
 .topToolbar {
@@ -899,6 +975,7 @@ margin-top: -1px;
   margin-left:0px;
   margin-right: 0px;
   position:fixed;
+
 }
 
 .closeAccountButton {
@@ -907,11 +984,13 @@ margin-top: -1px;
   /* flex: 0 1 40px; */
   z-index: 20000;
   position:absolute;
-bottom:-55px;
+  border: 1px solid black;
+
+/* bottom:-55px; */
 left:50%;
 transform:translateX(-50%);
-transition: 0.2s ease-in-out bottom;
-transition-delay: 0.005s;
+/* transition: 0.2s ease-in-out bottom;
+transition-delay: 0.005s; */
 }
 
 .line {
@@ -948,14 +1027,16 @@ right: 0px;
 }
 
 .account {
-  left:50%;
-  transform: translateX(-50%) ;
-  margin: 0px;
+    /* left: 50%; */
+    /* transform: translateX(-50%); */
+    margin: 0px;
+    right: 9%;
+    bottom: 155px;
 }
 
 .modebutton img {
-  width:50px;
-  height:50px;
+  width:49px;
+  height:49px;
   margin-left: -18px;
   margin-top: -3px;
 }
@@ -976,6 +1057,7 @@ right: 0px;
   transform: translateY(10px) rotate(-2deg);
   transition: all 0.2s ease-in-out;
   margin-top: 15px;
+  z-index: 0;
 }
 
 .canvasopen {
@@ -1010,7 +1092,7 @@ margin-top: -20px;
   display: table-cell;
   width: 100%;
   vertical-align: middle;
-  position: relative;
+
 
 }
 
@@ -1128,6 +1210,7 @@ h1 span:after {
 .shortuserbutton {
   border-radius: 50%;
   width: 35px;
+  
   height:35px;
   /* bottom:50%;
   transform:translateY(-50%); */
@@ -1135,6 +1218,10 @@ h1 span:after {
   align-items: center; 
   justify-content: center;
   padding:0px;
+  margin-bottom:auto;
+  margin-top: auto;
+  /* bottom: 50%;
+  transform: translateY(-50%); */
 }
 
  .dismiss {

@@ -4,19 +4,22 @@ import * as serviceWorker from "./serviceWorker";
 import * as THREE from "three";
 import $ from "jquery";
 import React, { Component } from "react";
-import roughnessmap from "./images/Plastic_001_ROUGH.jpg";
+import roughnessmap from "./images/Plastic_001_ROUGH2.jpg";
 import anime from "animejs/lib/anime.es.js";
-import replyimage from "./images/noun_Reply_70802.png";
+// import replyimage from "./images/noun_Reply_70802.png";
 import starimage from "./images/images.png";
 import starimagealpha from "./images/imagesalpha.png";
 import globeimage from "./images/Globe-5.svg";
+import smileyimage from "./images/smiley.svg";
+// import smileyimage from "./images/rose-2-2015042038.svg"
+import accountimage from "./images/account2.svg";
 import stickerbg from "./images/stickerbg.png";
 import envmap from "./images/envmap.jpg";
 import envmap2 from "./images/envmap2.jpg";
 import scratchmap from "./images/scratchtexture.jpg";
 import papermap from "./images/paper.jpeg";
 import papermap2 from "./images/paper.jpg";
-
+import starbutton from "./images/8-Point-Star_black_void.svg"
 import holographicmap from "./images/MWHG50-XLARGE.jpg";
 import { SpotLight, MeshNormalMaterial, TorusKnotBufferGeometry } from "three";
 import { FresnelShader } from "./shaders/FresnelShader.js";
@@ -44,6 +47,7 @@ console.log("Window width");
 
 var photos = [];
 var currentPhotosList = []
+var photoDataByKey = {}
 var currentPage = 0
 var replies = {};
 
@@ -59,9 +63,13 @@ var stickerCount = 0
 var backDicts = []
 const transitionTime = 500
 
+var followingList = {}
+var firstLoad = true
+
 var primaryorange = "FDB943";
 var primarywhite = "E6E3DA";
 var primarydarkorange = "fe5b30"
+var primarydarkpink = "fe5b30"
 
 console.log(window.innerWidth);
 if (window.innerWidth < 737) {
@@ -71,11 +79,31 @@ if (window.innerWidth < 737) {
 var textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "Anonymous";
 
-var grimetexture = async function getGrimeTexture() {
-  textureLoader.load(roughnessmap, function (texture) {
-    return Promise.resolve(texture);
-  });
+var grimetexture = undefined
+
+function getGrimeTexture() {
+
+
+  return new Promise(resolve => {
+    textureLoader.load(roughnessmap, function (texture) {
+      grimetexture = texture
+      resolve(texture)
+    });
+  })
 };
+
+async function assignGrimeTexture(cube) {
+  if (grimetexture === undefined) {
+    getGrimeTexture().then(function() {
+      cube.roughnessMap = grimetexture
+      cube.material.needsUpdate = true
+    })
+  } else {
+    cube.roughnessMap = grimetexture
+    cube.material.needsUpdate = true
+  } 
+}
+
 var daisy = new THREE.Mesh();
 
 var firebaseConfig = {
@@ -97,11 +125,15 @@ firebase.auth().onAuthStateChanged(function (user) {
     if (!user.isAnonymous) {
       var timeref = firebase.database().ref('stickerusers/' + user.uid + '/time')
       timeref.set(Date.now())
+      console.log("SETTING TIME")
+      makeFollowingListeners(user.uid)
     }
     // ...
   } else {
     // User is signed out.
     // ...
+    followingList = {}
+
     firebase
       .auth()
       .signInAnonymously()
@@ -125,6 +157,30 @@ var cl = new Cloudinary({
 });
 
 // document.getElementById("shinebutton").onclick = function () {};
+function getFollowing(uid) {  
+  return new Promise(resolve => {
+    const followingRef = firebase.database().ref('/following/' + uid)
+    followingRef.once('value', function(snapshot) {
+    snapshot.forEach(function(childSnapshot) {
+      followingList[snapshot.key] = true
+    })
+    resolve(true)
+  })
+  })
+
+}
+function makeFollowingListeners(uid) {
+  const followingRef = firebase.database().ref('/following/' + uid)
+  followingRef.on('child_added', function(snapshot) {
+      followingList[snapshot.key] = true
+      console.log("FOLLOWING " + snapshot.key)
+  }
+  )
+  followingRef.on('child_removed', function(snapshot) {
+    followingList[snapshot.key] = false
+    console.log("FOLLOWING " + snapshot.key)
+})
+}
 
 function displayLoginForm() {
   anime({
@@ -144,7 +200,7 @@ function successLoginForm() {
   anime({
     targets: ".logindialog",
     top: [{ value: "-200%", easing: "easeInOutQuad", duration: 600 }],
-    delay: 2000
+    delay: 500
   });
   // submitFilesinFileInput();
 }
@@ -247,13 +303,14 @@ function handleReplyUpload(element) {
         img.width,
         img.height,
         "testimages/" + replyref + "/replies",
-        true
+        true,
+        replyref
       );
     };
   }
 }
 
-function uploadFile(file, width, height, firebaseref, reply) {
+function uploadFile(file, width, height, firebaseref, reply, replyImageUid) {
   var url = `https://api.cloudinary.com/v1_1/cathedralapp/upload`;
   var xhr = new XMLHttpRequest();
   var fd = new FormData();
@@ -362,6 +419,17 @@ function uploadFile(file, width, height, firebaseref, reply) {
             console.log(snapshot.val());
             var photodata = snapshot.val();
 
+            if(photoDataByKey[replyImageUid].creator !== firebase.auth().currentUser.uid) {
+
+              createNotification(photoDataByKey[replyImageUid].creator,  photoDataByKey[replyImageUid].creatorusername, firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName, replyImageUid, photoDataByKey[replyImageUid].url, "reply")
+              //createNotification(photoDataByKey[replyImageUid].creator, photoDataByKey[replyImageUid].creatorusername, photoDataByKey[replyImageUid].creator, firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName, replyImageUid, photoDataByKey[replyImageUid].url, "reply")
+            
+            }
+
+            createAlsoNotifications(photoDataByKey[replyImageUid].creator,  photoDataByKey[replyImageUid].creatorusername, firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName, replyImageUid, photoDataByKey[replyImageUid].url, "reply")
+
+
+            //Reply animation
             sortPhotosByYPosition(photos);
 
             var heighttodescend =
@@ -398,8 +466,6 @@ function uploadFile(file, width, height, firebaseref, reply) {
               type.newreply,
               animationType.fromright
             );
-
-            var notificationRef = firebase.database().ref('/notifications/' + photodata.creator)
 
             photodata.object = newphoto;
             if (replies[replyref]) {
@@ -472,6 +538,52 @@ function uploadFile(file, width, height, firebaseref, reply) {
   xhr.send(fd);
 }
 
+function createAlsoNotifications(receiverUid, originalCreatorDisplay, creatorUid, creatorDisplayName, photoUid, photoUrl, type) {
+  var repliesRef = firebase.database().ref('/testimages/' + photoUid + '/replies')
+  
+
+  repliesRef.once('value', function(snapshot) {
+
+    var replyDict = {}
+
+    snapshot.forEach(function(childSnapshot) {
+
+      if (childSnapshot.val().creator !== receiverUid && childSnapshot.val().creator !== creatorUid) {
+        replyDict[childSnapshot.val().creator] = childSnapshot.val()
+      }
+
+    })
+
+    for (const [key, value] of Object.entries(replyDict)) {
+
+      console.log("Also receiver " + key)
+      createNotification(key, originalCreatorDisplay, creatorUid, creatorDisplayName, photoUid, photoUrl, "also")    }
+
+  })
+}
+
+function createNotification(receiverUid, originalCreatorDisplay, creatorUid, creatorDisplayName, photoUid, photoUrl, type) {
+  const notificationRef = firebase.database().ref('/notifications/' + receiverUid)
+
+  const urlSplit = photoUrl.split("/upload/")
+  const photoStub = urlSplit[0] + "/upload/t_media_lib_thumb/" + urlSplit[1]
+
+  var notification = {
+    'receiverUid': receiverUid,
+    'creatorUid':creatorUid,
+    'originalCreatorDisplay':originalCreatorDisplay,
+    'creatorDisplayName':creatorDisplayName,
+    'photoUid':photoUid,
+    'photoUrl':photoStub,
+    'type':type,
+    'status':'unread'
+  }
+  // https://res.cloudinary.com/cathedralapp/image/upload/t_media_lib_thumb/v1605748082/sunshine/d9tvpfjhgobvfxbgienq.jpg
+  // https://res.cloudinary.com/cathedralapp/image/upload/v1605748082/sunshine/d9tvpfjhgobvfxbgienq.jpg
+
+  notificationRef.push(notification)
+}
+
 async function requestLatestStickerUsers() {
   firebase
   .database()
@@ -492,8 +604,41 @@ async function requestLatestStickerUsers() {
 
 }
 
+async function requestSinglePhoto(uid) {
+  clearFeed()
+
+  console.log(uid)
+
+  firebase.database().ref('/testimages/').child(uid)
+    .once("value")
+    .then(function (snapshot) {
+      console.log(snapshot);
+
+      var childData = snapshot.val()
+      childData["key"] = snapshot.key;
+
+      var photosList = [childData]
+      // var photosList = [];
+
+      // snapshot.forEach(function (childSnapshot) {
+      //   var childKey = childSnapshot.key;
+      //   console.log(childKey);
+      //   var childData = childSnapshot.val();
+      //   console.log(childData);
+      //   // ...
+      //   childData["key"] = childKey;
+      //   photosList.push(childData);
+      // });
+
+      //   photosList.reverse();
+        setUpNewFeed(photosList, undefined, animationType.fromright, 0)
+      })
+}
+
 async function requestUserPhotos(uid) {
   clearFeed()
+
+  console.log(uid)
 
   firebase.database().ref('/testimages/').orderByChild('creator').equalTo(uid)
     .once("value")
@@ -1251,7 +1396,14 @@ function displayReplies(object) {
           addTimeRandomNumber
         );
 
-        var badge = addBadge(value.creatorusername, color, value.object,value.creator);
+        var badgeStyle = "globe"
+    
+        if (followingList[value.creator] === true) {
+          badgeStyle = "following"
+          console.log("Found following")
+        }
+
+        var badge = addBadge(value.creatorusername, color, value.object,value.creator, badgeStyle);
         badge.material.opacity = 0;
 
         anime({
@@ -1377,7 +1529,7 @@ function animateOutReplyMesh(mesh) {
     targets: mesh.position,
     x: [
       {
-        value: imagewidth / 2 + 0.08,
+        value: imagewidth / 2 + 0.1,
         easing: "easeInOutQuad",
         duration: 350,
         delay: 100,
@@ -1429,7 +1581,7 @@ function createReplyMesh(yvalue, id) {
 
   animateOutReplyMesh(replymesh);
 
-  var scale = 0.55;
+  var scale = 0.45;
   replymesh.scale.set(scale, scale, scale);
 
   photos.push(replymesh);
@@ -1462,27 +1614,35 @@ function drawReplySymbol() {
   var xoffset = 0.425;
   var yoffset = -0.35;
   var multiplier = 1;
-  path.moveTo(-0.1 + xoffset * multiplier, 0.1 + yoffset * multiplier);
-  path.quadraticCurveTo(
-    0 + xoffset * multiplier,
-    0.45 + yoffset * multiplier,
-    -0.5 + xoffset * multiplier,
-    0.5 + yoffset * multiplier
-  );
-  path.lineTo(-0.5 + xoffset * multiplier, 0.6 + yoffset * multiplier);
-  path.lineTo(-0.75 + xoffset * multiplier, 0.4 + yoffset * multiplier);
-  path.lineTo(-0.5 + xoffset * multiplier, 0.2 + yoffset * multiplier);
-  path.lineTo(-0.5 + xoffset * multiplier, 0.3 + yoffset * multiplier);
-  path.quadraticCurveTo(
-    -0.2 + xoffset * multiplier,
-    0.3 + yoffset * multiplier,
-    -0.1 + xoffset * multiplier,
-    0.1 + yoffset * multiplier
-  );
+  // path.moveTo(-0.1 + xoffset * multiplier, 0.1 + yoffset * multiplier);
+  // path.quadraticCurveTo(
+  //   0 + xoffset * multiplier,
+  //   0.45 + yoffset * multiplier,
+  //   -0.5 + xoffset * multiplier,
+  //   0.5 + yoffset * multiplier
+  // );
+  // path.lineTo(-0.5 + xoffset * multiplier, 0.6 + yoffset * multiplier);
+  // path.lineTo(-0.75 + xoffset * multiplier, 0.4 + yoffset * multiplier);
+  // path.lineTo(-0.5 + xoffset * multiplier, 0.2 + yoffset * multiplier);
+  // path.lineTo(-0.5 + xoffset * multiplier, 0.3 + yoffset * multiplier);
+  // path.quadraticCurveTo(
+  //   -0.2 + xoffset * multiplier,
+  //   0.3 + yoffset * multiplier,
+  //   -0.1 + xoffset * multiplier,
+  //   0.1 + yoffset * multiplier
+  // );
 
   //path.lineTo( 1, 1 );
 
-  var points = path.getPoints();
+  path.moveTo(-0.05 , 0.2 )
+  path.lineTo(-0.3 , 0 )
+  path.lineTo(-0.05 , -0.2 )
+  path.lineTo(-0.3 , 0 )
+  path.lineTo( 0.1, 0 )
+  path.quadraticCurveTo( 0.3, 0,   0.3, -0.20)
+  path.quadraticCurveTo( 0.3, -0.4,   0, -0.40)
+
+  var points = path.getPoints(25);
 
   var geometry = new THREE.BufferGeometry().setFromPoints(points);
 
@@ -1490,10 +1650,10 @@ function drawReplySymbol() {
 
   // Create the final object to add to the scene
   var splineObject = new THREE.Line(geometry, material);
-
-  return splineObject;
   // scene.add(splineObject);
-  // splineObject.position.set(0, 0, 3);
+  // splineObject.position.set(0, 0, 2);
+  return splineObject;
+
 }
 //drawReplySymbol();
 function drawReplyLine(endofline, midpoints, objectanchor) {
@@ -1526,6 +1686,19 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
     console.log("last midpoint" + midpoint);
 
   }
+  // var pointArray = []
+  // pointArray.push(new THREE.Vector2(-0.05, 0))
+  // for (var midpoint of midpoints) {
+
+  //   const vectorPoint = new THREE.Vector2(0 + (imagewidth/2) + (Math.random() * 0.2), midpoint)
+  //   const vectorPoint2 = new THREE.Vector2(0 - Math.random() * 0.5, midpoint - (Math.random() * 0.5))
+
+  //   pointArray.push(vectorPoint2)
+  //   pointArray.push(vectorPoint)
+  // }
+
+  // var curve =  new THREE.SplineCurve(pointArray)
+
 
   // path.lineTo(0, endofline + 0.1);
   // path.quadraticCurveTo(0, endofline, 0.1, endofline);
@@ -1546,7 +1719,7 @@ function drawReplyLine(endofline, midpoints, objectanchor) {
   meshAnchor.position.set(
     -(imagewidth / 2),
     objectanchor.position.y,
-    photozposition - 0.3
+    photozposition - 0.5
   );
   meshAnchor.add(splineObject);
   meshAnchor.scale.y = 0;
@@ -1716,7 +1889,7 @@ function addMoveStar(parentobject, starKey, xposition, yposition) {
 
 
 
-function createPhoto(
+async function createPhoto(
   url,
   xposition,
   yposition,
@@ -1733,18 +1906,22 @@ function createPhoto(
   var material = new THREE.MeshStandardMaterial()
   cube.material = material
 
+  assignGrimeTexture(cube)
+
+  //material.needsUpdate = true
+
   var height = photo.height;
   var width = photo.width;
   var key = photo.key;
 
-  var textureLoader = new THREE.TextureLoader();
-  textureLoader.crossOrigin = "Anonymous";
-  textureLoader.load(roughnessmap, function (texture) {
-    console.log("TEXTURE LOADED", texture);
+  // var textureLoader = new THREE.TextureLoader();
+  // textureLoader.crossOrigin = "Anonymous";
+  // textureLoader.load(roughnessmap, function (texture) {
+  //   console.log("TEXTURE LOADED", texture);
 
-      cube.material.roughnessMap = texture
-      cube.material.needsUpdate = true
-    });
+  //     cube.material.roughnessMap = texture
+  //     cube.material.needsUpdate = true
+  //   });
     // cube.rotation.x = -0.1;
     // cube.rotation.y = -0.2;
 
@@ -1756,6 +1933,19 @@ function createPhoto(
 
     cube.position.y = yposition;
     cube.position.x = xposition;
+
+    var badgeStyle = "globe"
+    var badgeColor = "#fe5b30"
+
+    console.log("Following photo " + photo.creator)
+    console.log(followingList)
+
+      if (followingList[photo.creator] === true) {
+        badgeStyle = "following"
+        badgeColor = "#" + primarydarkpink
+        console.log("Found following")
+      }
+    
 
     if (photoAnimationType === animationType.fromabove) {
       cube.position.z = 5;
@@ -1797,7 +1987,7 @@ function createPhoto(
 
       addStarsRefs(cube,key)
       addPhotoClickEvent(cube)
-      addBadge(username, "#fe5b30", cube, photo.creator);
+      addBadge(username, badgeColor, cube, photo.creator, badgeStyle);
 
 
     } 
@@ -1909,13 +2099,14 @@ function createPhoto(
         var color =
       "#" +
       interpolateColors(primarywhite, "3773B3", 0.25);
-      addBadge(username, color, cube, photo.creator);
+      addBadge(username, color, cube, photo.creator, badgeStyle);
 
     }
 
     //cube.position.z = photozposition;
 
     photos.push(cube);
+    photoDataByKey[key] = photo
 
     if (photo.replies) {
       console.log("FOUDN REPLIES");
@@ -2007,8 +2198,8 @@ function handleUnfollow(uid) {
   removeFollowedPostFromPrivateFeed(uid)
 }
 
-function addBadge(username, color, object, uid) {
-  var mesh = circleBadge(username, 150, 150, 75, Math.PI / 2, 0.45, color);
+function addBadge(username, color, object, uid, badgeStyle) {
+  var mesh = circleBadge(username, 100, 100, 50, Math.PI / 2, 0.45, color, badgeStyle);
 
   object.add(mesh);
 
@@ -2039,16 +2230,17 @@ function addBadge(username, color, object, uid) {
      }})
 
      setTimeout(function() {
-      addToBackDict(currentPhotosList, stickers, null,window.App.state.currentTitle, uid)
-      transitionPhotosLeft(photos)
+      window.App.goForward(username,uid,null,requestUserPhotos, uid,photos)
+      // addToBackDict(currentPhotosList, stickers, null,window.App.state.currentTitle, uid)
+      // transitionPhotosLeft(photos)
 
-      setTimeout(function() { 
-        requestUserPhotos(uid)
-      }, transitionTime - 100);  
-      window.App.setState({
-        currentTitle:username,
-        currentTitleUid: uid
-      })
+      // setTimeout(function() { 
+      //   requestUserPhotos(uid)
+      // }, transitionTime - 100);  
+      // window.App.setState({
+      //   currentTitle:username,
+      //   currentTitleUid: uid
+      // })
      }, transitionTime/2)
 
 
@@ -2155,13 +2347,13 @@ CanvasRenderingContext2D.prototype.fillTextCircle = function (
   this.restore();
 };
 
-function drawGlobe(ctx, x) {
+function drawImage(ctx, x, imageToDraw) {
 
-  var globe = new Image()
-  globe.onload = function() {
-    ctx.drawImage(globe,x/4,x/4,x/2,x/2)
+  var image = new Image()
+  image.onload = function() {
+    ctx.drawImage(image,x/4,x/4,x/2,x/2)
   }
-  globe.src = globeimage
+  image.src = imageToDraw
 
 }
 
@@ -2183,7 +2375,8 @@ function circleBadge(
   radius,
   startRotation,
   threejsdimension,
-  color
+  color,
+  badgeStyle
 ) {
   var textcanvas = document.createElement("canvas");
   var ctx = textcanvas.getContext("2d");
@@ -2196,12 +2389,16 @@ function circleBadge(
   ctx.arc(x / 2, y / 2, radius * 2, 0, Math.PI * 2, true); // Outer circle
   //ctx.fillRect(0, 0, ctx.width, ctx.height);
 
-  drawGlobe(ctx, x)
+  if (badgeStyle === "globe") {
+    drawImage(ctx, x, globeimage)
+  } else if (badgeStyle === "following") {
+    drawImage(ctx, x, smileyimage)
+  }
 
   ctx.fill();
 
   ctx.fillStyle = "#00000f";
-  ctx.font = "italic 30px Times New Roman";
+  ctx.font = "italic 20px Times New Roman";
 
   ctx.fillTextCircle(text + " ", x, y, (radius / 3) * 1.8, -Math.PI / 2);
 
@@ -2258,7 +2455,7 @@ class ThreeJS extends Component {
       50,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      8
     );
 
     var renderer = new THREE.WebGLRenderer({ alpha: true });
@@ -2287,12 +2484,55 @@ class ThreeJS extends Component {
 
     const interaction = new Interaction(renderer, scene, camera);
 
-    requestLatestPhotos();
+    //requestLatestPhotos();
 
-    var loader = new GLTFLoader();
+    // var cubeloader = new THREE.CubeTextureLoader();
 
-    loader.load(scenedata, function (gltf) {
-      console.log("loaded scene");
+    // var textureCube = cubeloader.load([
+    //   holographicmap,
+    //   holographicmap,
+    //   holographicmap,
+    //   holographicmap,
+    //   holographicmap,
+    //   holographicmap,
+    // ]);
+
+    // var normalMap = textureLoader.load(papermap)
+    // var geometry = new THREE.BoxGeometry(2,2,0.1)
+    // var material = new THREE.MeshStandardMaterial()
+    // material.normalMap = normalMap
+    // material.normalScale = new THREE.Vector2(0.4,0.4)
+    // material.normalMapType = THREE.ObjectSpaceNormalMap
+    // material.envMap = textureCube
+    // material.metalness = 0.9
+    // material.envMap.mapping = THREE.CubeReflectionMapping
+    // var object = new THREE.Mesh(geometry,material)
+    // //scene.add(object)
+    // object.position.set(0,0,1.75)
+
+    // anime({
+    //     targets: object.rotation,
+    //     x: [
+    //       {
+    //         value: Math.PI * 2,
+    //         easing: "linear",
+    //         duration: 6000,
+    //       },
+    //     ],
+    //     y: [
+    //       {
+    //         value: Math.PI * 2,
+    //         easing: "linear",
+    //         duration: 6000,
+    //       },
+    //     ],
+    //     loop: true,
+    //   });
+
+    // var loader = new GLTFLoader();
+
+    // loader.load(scenedata, function (gltf) {
+    //   console.log("loaded scene");
 
       // gltf.scene.traverse(function (object) {
       //   console.log("GLTF traverse");
@@ -2337,7 +2577,16 @@ class ThreeJS extends Component {
       //   holographicmap,
       // ]);
 
-      // var normalMap = textureLoader.load(holographicmap)
+      // var normalMap = textureLoader.load(papermap)
+      // var geometry = new THREE.BoxGeometry(2,2,0.1)
+      // var material = new THREE.MeshStandardMaterial()
+      // material.normalMap = normalMap
+      // material.envMap = textureCube
+      // material.metalness = 0.9
+      // var object = THREE.Mesh(geometry,material)
+      // scene.add(object)
+      // object.position.set(0,0,2)
+
       // diamond.material.normalMap = normalMap
       // diamond.material.metalnessMap = normalMap
       // diamond.material.map = normalMap
@@ -2394,14 +2643,14 @@ class ThreeJS extends Component {
       //diamond.material.transparent = true
       //diamond.material.opacity = 1
 
-      console.log(daisy);
+    //   console.log(daisy);
 
-      // daisy.children[0].material = new THREE.MeshStandardMaterial({
-      //   color: new THREE.Color("0x" + primarywhite)
-      // })
-    });
+    //   // daisy.children[0].material = new THREE.MeshStandardMaterial({
+    //   //   color: new THREE.Color("0x" + primarywhite)
+    //   // })
+    // });
 
-    var spotLight = new THREE.SpotLight(0xfff1db);
+    var spotLight = new THREE.DirectionalLight(0xfff1db);
     spotLight.intensity = 1;
 
     spotLight.castShadow = true;
@@ -2422,17 +2671,17 @@ class ThreeJS extends Component {
     spotLight.target.position.set(0, 0, 0);
     //spotLight.shadow.bias = -0.0005
     camera.add(spotLight);
-    spotLight.position.set(0, 5, 10);
+    spotLight.position.set(0, 5.25, 10);
 
     camera.add(spotLight.target);
 
-    var light2 = new THREE.DirectionalLight(0xfff1db); // soft white light
-    light2.intensity = 0.25;
-    //light2.shadow.bias = -0.0005
+    // var light2 = new THREE.DirectionalLight(0xfff1db); // soft white light
+    // light2.intensity = 0.25;
+    // //light2.shadow.bias = -0.0005
 
-    camera.add(light2);
-    light2.position.set(0, -9.5, 10);
-    //camera.add(light2);
+    // camera.add(light2);
+    // light2.position.set(0, -9.5, 10);
+    // //camera.add(light2);
 
     var animate = function () {
       requestAnimationFrame(animate);
@@ -2573,11 +2822,13 @@ class AccountForm extends Component {
     super();
     this.state = {
       formDisplay: false,
-      strokeCount: 0
+      strokeCount: 0,
+      notificationList:[]
     };
     this.dismissForm = this.dismissForm.bind(this)
     this.stickerForm = React.createRef()
     this.accountForm = React.createRef()
+    this.notificationList = React.createRef()
     this.signOut = this.signOut.bind(this)
     this.addStroke = this.addStroke.bind(this)
     this.clearStroke = this.clearStroke.bind(this)
@@ -2610,11 +2861,42 @@ class AccountForm extends Component {
 
     this.clearStroke()
     this.props.maximizeUI()
+    this.props.setNotificationsRead()
+    this.markNotificationsAsRead()
+  }
+
+  markNotificationsAsRead() {
+    for(var notification of this.state.notificationList) {
+      if (notification.val().status === "unread") {
+        notification.ref.child('status').set('read')
+      }
+    }
   }
 
   showForm() {
     this.setState({
       formDisplay:true
+    })
+    this.requestNotifications()
+  }
+
+  requestNotifications() {
+    const component = this
+    firebase
+    .database()
+    .ref("notifications/" + firebase.auth().currentUser.uid).limitToLast(50)
+    .once('value', function (snapshot) {
+      console.log("Notification")
+      console.log(snapshot.val())
+      var notifications = []
+      snapshot.forEach(function(childSnapshot) {
+
+        notifications.push(childSnapshot)
+
+      })
+      component.setState({
+        notificationList:notifications.reverse()
+      })
     })
   }
 
@@ -2631,16 +2913,12 @@ class AccountForm extends Component {
   }
 
   requestUserPhotos(uid, displayName) {
-    addToBackDict(currentPhotosList, stickers, this.accountForm.current,this.props.currentTitle, this.props.currentTitleUid)
+    this.props.goForward(displayName, uid, this.accountForm.current, requestUserPhotos, uid, photos)
+    this.props.dismissAccountForm()
+  }
 
-
-    transitionPhotosLeft(photos)
-
-    setTimeout(function() { 
-      requestUserPhotos(uid)
-    }, transitionTime - 100);    
-
-    this.props.setCurrentTitle(displayName, uid)
+  requestSinglePhoto(uid, creatorName) {
+    this.props.goForward(creatorName + "'s photo", "", this.accountForm.current, requestSinglePhoto, uid, photos)
     this.props.dismissAccountForm()
   }
 
@@ -2665,11 +2943,13 @@ class AccountForm extends Component {
 </div>
 </div>
        {/* <div className="accountreadout"> */}
+       <NotificationList newNotifications={this.props.newNotifications} ref={this.notificationList} notificationList={this.state.notificationList} requestSinglePhoto={this.requestSinglePhoto.bind(this)} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></NotificationList>
+
        <ShortUserList requestUserPhotos={this.requestUserPhotos.bind(this)} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></ShortUserList>
 
          <div className="toolbarcontainer">
-      <button id="title" onClick={() => this.requestUserPhotos(firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName)}>&#x25B7; View Photos</button>
-       <button id="title" onClick={this.signOut}>&#9789; Sign Out</button>
+      <button id="title" onClick={() => this.requestUserPhotos(firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName)}><div className="buttonsymbol">&#12297;</div>View Photos</button>
+       <button id="title" onClick={this.signOut}><div className="buttonsymbol">&#12296;</div>Sign Out</button>
        
        </div>
     {/* </div> */}
@@ -3035,7 +3315,7 @@ class LoginForm extends Component {
               <img
                 id="loginimage"
                 className="logindialogimage"
-                src="/images/8-Point-Star_black_void.svg"
+                src={starbutton}
                 object-fit="scale-down"
               ></img>
             </span>
@@ -3136,12 +3416,12 @@ class LoginForm extends Component {
             cancel
           </button> */}
         </div>
-        <div
+        {/* <div
           className={
             "backgroundlogin " +
             (!this.state.success ? "" : "backgroundloginfadein")
           }
-        ></div>
+        ></div> */}
 
         {/* <div className="rodal-mask"></div> */}
       </div>
@@ -3173,37 +3453,45 @@ class ShortUser extends Component {
         displayName:snapshot.val().username || "",
       })
     })
-  }
 
-  requestUserPhotos() {
-    addToBackDict(currentPhotosList, stickers, this.props.accountForm,this.props.currentTitle)
-    requestUserPhotos(this.props.uid)
-    this.props.setCurrentTitle(this.state.displayName)
+    var followingRef = firebase.database().ref('following/' + firebase.auth().currentUser.uid + '/' + this.props.uid)
+    followingRef.on('value', function(snapshot) {
+      if(snapshot.exists()) {
+        component.setState({
+          isFollowing:true
+        })
+      } else {
+        component.setState({
+          isFollowing:false
+        })    
+      }
+    })
+
   }
 
   handleFollow() {
     handleFollow(this.props.uid)
-    this.setState({
-      isFollowing:true
-    })
+    // this.setState({
+    //   isFollowing:true
+    // })
   }
 
   handleUnfollow() {
     handleUnfollow(this.props.uid)
-    this.setState({
-      isFollowing:false
-    })
+    // this.setState({
+    //   isFollowing:false
+    // })
   }
 
   render() {
     return (
       <div className="shortuser" id={this.props.uid} >
         <div onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)} className="shortusertext">{this.state.displayName}</div>
-        <div className="shortuserbuttoncontainer">
+        {/* <div className="shortuserbuttoncontainer"> */}
         <button style={this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleUnfollow.bind(this)} className="shortuserbutton plus">&#65293;</button>
         <button style={!this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleFollow.bind(this)} className="shortuserbutton plus">&#65291;</button>
-        <button className="shortuserbutton" onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)}>&#x25B7;</button>
-        </div>
+        <button className="shortuserbutton" onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)}>&#12297;</button>
+        {/* </div> */}
       </div>
     );
   }
@@ -3271,7 +3559,7 @@ class ShortUserList extends Component {
     return (
       <div className="shortuserlist">
       
-      <div onClick={() => this.toggleMenu()} className="listtitle"><div></div>FOLLOWING <div className={"arrow " +
+      <div onClick={() => this.toggleMenu()} className="listtitle">FOLLOWING <div className={"arrow " +
                   (this.state.menuOpen
                     ? "arrowrotate"
                     : "")}>&#x25BE;</div></div>
@@ -3280,6 +3568,132 @@ class ShortUserList extends Component {
                   ? "listexpanded"
                   : "")}>
         {shortUsers}
+      </div>
+      <div className="divider"></div>
+      </div>
+    );
+  }
+}
+
+class Notification extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      notificationMessage: ""
+    };
+  }
+
+  componentDidMount() {
+    if (this.props.notification.type === "reply") {
+
+      const message = this.props.notification.creatorDisplayName + " replied"
+
+      this.setState({
+        notificationMessage: message
+      })
+
+    } else if (this.props.notification.type === "also") {
+
+      const message = this.props.notification.creatorDisplayName + " also replied to " + this.props.notification.originalCreatorDisplay
+
+      this.setState({
+        notificationMessage: message
+      })
+
+    }
+  }
+
+  render() {
+    return (
+      <div className="shortuser" id={this.props.uid} >
+        <div style={this.props.notification.status === "unread" ? {'opacity':1} : {'opacity':0}} className="notificationDot onNotification"></div>
+        <img className="notificationImage" src={this.props.notification.photoUrl}></img>
+    <div onClick={() => this.props.requestSinglePhoto(this.props.notification.photoUid, this.props.notification.originalCreatorDisplay || "")} className="shortusertext">{this.state.notificationMessage}</div>
+        {/* <div className="shortuserbuttoncontainer"> */}
+        <button className="shortuserbutton" onClick={() => this.props.requestSinglePhoto(this.props.notification.photoUid, this.props.notification.originalCreatorDisplay || "")}>&#12297;</button>
+        {/* </div> */}
+      </div>
+    );
+  }
+}
+
+class NotificationList extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      notificationList: [],
+      menuOpen: false
+    };
+  }
+
+  componentDidMount() {
+
+    // function getFollowingList(component, uid) {
+
+      // firebase
+      // .database()
+      // .ref("notifications/" + uid)
+      // .once('value', function (snapshot) {
+
+      //   var newUids = []
+      //   snapshot.forEach(function (childSnapshot) {
+      //     newUids.push(childSnapshot.key)
+      //     console.log(childSnapshot.key)
+      //   })
+
+      //   component.setState({
+      //     uidList:newUids,
+      //   })
+
+      // })
+    // }
+
+
+    // const component = this
+    // firebase.auth().onAuthStateChanged(function (user) {
+
+    //   if(user.isAnonymous) {
+    //     this.setState({
+    //       notificationList:[]
+    //     })
+    //     return
+    //   }
+    //   firebase
+    //   .database()
+    //   .ref("notifications/" + user.uid).limitToLast(50)
+    //   .on('child_added', function (snapshot) {
+    //     console.log("Notification")
+    //     console.log(snapshot.val())
+    //     component.setState({
+    //       notificationList: component.state.notificationList.push(snapshot.val())
+    //     })
+    //   })
+    // })
+  }
+
+  toggleMenu() {
+    this.setState({
+      menuOpen: !this.state.menuOpen
+    })
+    
+  }
+
+  render() {
+    var notifications = this.props.notificationList.map((d) => 
+    <Notification requestSinglePhoto={this.props.requestSinglePhoto} currentTitle={this.props.currentTitle} notification={d.val()}></Notification>);
+
+    return (
+      <div className="shortuserlist">
+      
+      <div onClick={() => this.toggleMenu()} className="listtitle">NOTIFICATIONS <div style={this.props.newNotifications ? {opacity:1}: {opacity:0}}  className="notificationDot menuNotificationDot"></div> <div className={"arrow " +
+                  (this.state.menuOpen
+                    ? "arrowrotate"
+                    : "")}>&#x25BE;</div></div>
+      <div  className={"list " +
+                (this.state.menuOpen
+                  ? "listexpanded"
+                  : "")}>
+        {notifications}
       </div>
       <div className="divider"></div>
       </div>
@@ -3393,9 +3807,13 @@ class App extends Component {
       currentTitleUid: "",
       minimalUI: false,
       accountFormOpen: false,
-      currentTitleUidFollowing: true
+      currentTitleUidFollowing: true,
+      mode: "all",
+      firstLoad:true,
+      newNotifications:false
     };
     window.App = this;
+    this.backTitle = React.createRef()
     this.loginForm = React.createRef()
     this.accountForm = React.createRef()
     this.goBack = this.goBack.bind(this)
@@ -3404,6 +3822,8 @@ class App extends Component {
   }
 
   componentDidMount() {
+    //this.requestPublicFeed()
+
     var component = this;
 
     firebase.auth().onAuthStateChanged(function (user) {
@@ -3423,11 +3843,9 @@ class App extends Component {
           function () {}
         );
 
-        //Get more info to add to the account form
-        if (user.isAnonymous) {
-        }
-
         if (!user.isAnonymous) {
+
+          component.createNotificationsListener(uid)
 
           firebase
           .database()
@@ -3440,6 +3858,16 @@ class App extends Component {
             })
           })
         }
+
+        getFollowing(user.uid).then( function() {
+          if (component.state.firstLoad) {
+            component.requestPublicFeed()
+            component.setState({
+              firstLoad:false
+            })
+          }
+        }
+        )
 
         // ...
       } else {
@@ -3459,6 +3887,29 @@ class App extends Component {
       }
       // ...
     });
+  }
+
+  createNotificationsListener(uid) {
+    const component = this 
+    const newNotificationsRef = firebase.database().ref('/notifications/' + uid).orderByChild('status').equalTo('unread').limitToLast(50)
+    newNotificationsRef.on("child_added", function(snapshot) {
+      component.setState({
+        newNotifications:true
+      })
+      component.accountForm.current.requestNotifications()
+    })
+  }
+
+  setNewNotifications() {
+    this.setState({
+      newNotifications:true
+    })
+  }
+
+  setNotificationsRead() {
+    this.setState({
+      newNotifications:false
+    })
   }
 
   loginFormShow() {
@@ -3488,10 +3939,16 @@ class App extends Component {
 
 
   requestPrivateFeed() {
+    this.setState({
+      mode:"private"
+    })
     requestPrivateFeed()
   }
 
   requestPublicFeed() {
+    this.setState({
+      mode:"all"
+    })
     requestLatestPhotos()
   }
 
@@ -3529,15 +3986,7 @@ class App extends Component {
         setUpNewFeed(backDict.photosList,backDict.stickers, animationType.fromleft, backDict.scroll)
       }, transitionTime - 100);
 
-      var backDictUid = ""
-      if(backDict.uid) {
-        backDictUid = backDict.uid
-      }
-
-      this.setState({
-        currentTitle:backDict.title,
-        currentTitleUid: backDictUid
-      })
+      this.setCurrentTitle(backDict.title, backDict.uid)
 
       if (backDict.div) {
         backDict.div.classList.remove('sentBack')
@@ -3560,13 +4009,28 @@ class App extends Component {
 
   }
 
+  goForward(newTitle, newUid, backDiv, newPhotosFunction, functionArgument, photos) {
+      
+    addToBackDict(currentPhotosList, stickers, backDiv, this.state.currentTitle, this.state.currentTitleUid)
+
+    transitionPhotosLeft(photos)
+
+    setTimeout(function() { 
+       newPhotosFunction(functionArgument)
+    }, transitionTime - 100);    
+
+    this.setCurrentTitle(newTitle, newUid)
+
+
+  }
+
   setCurrentTitle(title, uid) {
     console.log("TITLE " + title)
     this.setState({
       currentTitle:title,
       currentTitleUid: uid
     }, () => {
-      console.log(this.state.currentTitle)})
+      this.checkIfFollowingTitleUid()})
   }
 
   submitInputOnChange(event) {
@@ -3609,10 +4073,8 @@ class App extends Component {
     }, 100)
   }
 
-  componentDidUpdate(prevProps, prevState, snapshot) {
+  checkIfFollowingTitleUid() {
     var component = this
-    console.log(prevState.currentTitleUid)
-    console.log(this.state.currentTitleUid)
 
     if( this.state.currentTitleUid !== "") {
       var newUidRef= firebase.database().ref('/following/' + firebase.auth().currentUser.uid + '/' + this.state.currentTitleUid)
@@ -3633,34 +4095,51 @@ class App extends Component {
     }
   }
 
+  handleTitleFollow() {
+    handleFollow(this.state.currentTitleUid)
+    this.setState({
+      currentTitleUidFollowing:true
+    })
+  }
+
+  handleTitleUnfollow() {
+    handleUnfollow(this.state.currentTitleUid)
+    this.setState({
+      currentTitleUidFollowing:false
+    })
+  }
+
   render() {
     return (
       <div>
             <div class="title" >
     <div class="titletext" >SUNSHINE</div>
-    <div className="topToolbar">
-      {/* <button className="modebutton accountShow" onClick={this.showAccountForm.bind(this)}>account</button>  */}
-    {/* <div className="line leftLine"></div> <div className="line rightLine"></div> */}
-    </div> 
     <div id="progress" className="progress">
     </div>
-    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto", bottom: '15px'}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>X</button>
+    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto", bottom: '15px'}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>&#10005;</button>
 
-    <div className="backTitle " style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}<button className="titleFollowButton" onClick={() => handleFollow(this.state.currentTitleUid)} style={this.state.currentTitleUid && !this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Follow</button></div>
+    <div className="backTitle " ref={this.backTitle} style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}
+    <button className="titleFollowButton" onClick={this.handleTitleFollow.bind(this)} style={this.state.currentTitleUid && !this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Follow</button>
+    <button className="titleFollowButton" onClick={this.handleTitleUnfollow.bind(this)} style={this.state.currentTitleUid && this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Unfollow</button>
+    </div>
 
-    <AccountForm loginForm={this.loginForm} dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    <AccountForm newNotifications={this.state.newNotifications} setNotificationsRead={this.setNotificationsRead.bind(this)} goForward={this.goForward.bind(this)} loginForm={this.loginForm} dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
 
     </div>
 
     <div className="modeBar" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1}}>
-    <button className="modebutton globe" id="requestpublic" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPublicFeed.bind(this)}><img src="/images/Globe-5.svg"/></button>
-    <button className="modebutton private" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPrivateFeed.bind(this)}>Private</button>
-    <button className="modebutton account" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.showAccountForm.bind(this)}>account</button>
+    <button className={"modebutton globe " + (this.state.mode === "all"
+      ? "modebuttonactive"
+      : "")} id="requestpublic" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPublicFeed.bind(this)}><img src={globeimage}/></button>
+    <button className={"modebutton private " + (this.state.mode === "private"
+      ? "modebuttonactive"
+      : "")} style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPrivateFeed.bind(this)}><img src={smileyimage}/></button>
+    <button className="modebutton account" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.showAccountForm.bind(this)}><img src={accountimage}/><div style={this.state.newNotifications ? {opacity:1}: {opacity:0}} className="notificationDot accountNotificationDot"></div></button>
 
     <div className="shinebutton" id="shinebutton">
       <input onChange={this.submitInputOnChange.bind(this)} ref={this.submitInput} type="file" accept="image/*" id="file-input"/>
       <label for="file-input"><img
-        src="/images/8-Point-Star_black_void.svg"
+        src={starbutton}
       /></label>
     </div>
     <div className="replyinput">
@@ -3673,7 +4152,9 @@ class App extends Component {
         <div className="threejs" style={this.state.accountFormOpen ? {opacity:0,pointerEvents:"none",overflow:"hidden" }: {opacity:1,pointerEvents:"all", overflow:"auto"}}>
           <ThreeJS />
         </div>
-        <LoginForm
+
+      </div>
+      <LoginForm
           ref={this.loginForm}
           closeloginform={this.loginFormHide.bind(this)}
           register={this.register.bind(this)}
@@ -3681,7 +4162,6 @@ class App extends Component {
           isAnonymous={this.state.isAnonymous}
           handleUpload={this.handleUpload.bind(this)}
         />
-      </div>
       </div>
     );
   }
@@ -3730,11 +4210,14 @@ function removeItemAll(arr, value) {
 }
 
 const scrollToTop = () => {
-  const c = document.documentElement.scrollTop || document.body.scrollTop;
-  if (c > 0) {
-    window.requestAnimationFrame(scrollToTop);
-    window.scrollTo(0, c - c / 8);
-  }
+  // const c = document.documentElement.scrollTop || document.body.scrollTop;
+  // if (c > 0) {
+  //   window.requestAnimationFrame(scrollToTop);
+  //   window.scrollTo(0, c - c / 8);
+  // }
+
+  $('html, body').animate({scrollTop:0},'500');
+
 };
 
 function paginateArray(array, page_size, page_number) {
