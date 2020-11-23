@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/sunshine/static/css/main.26f19194.chunk.css",
-    "main.js": "/sunshine/static/js/main.12aff4ee.chunk.js",
-    "main.js.map": "/sunshine/static/js/main.12aff4ee.chunk.js.map",
+    "main.js": "/sunshine/static/js/main.e35deba1.chunk.js",
+    "main.js.map": "/sunshine/static/js/main.e35deba1.chunk.js.map",
     "runtime-main.js": "/sunshine/static/js/runtime-main.f375007d.js",
     "runtime-main.js.map": "/sunshine/static/js/runtime-main.f375007d.js.map",
-    "static/js/2.f2ce56db.chunk.js": "/sunshine/static/js/2.f2ce56db.chunk.js",
-    "static/js/2.f2ce56db.chunk.js.map": "/sunshine/static/js/2.f2ce56db.chunk.js.map",
+    "static/js/2.bb3eeb15.chunk.js": "/sunshine/static/js/2.bb3eeb15.chunk.js",
+    "static/js/2.bb3eeb15.chunk.js.map": "/sunshine/static/js/2.bb3eeb15.chunk.js.map",
     "index.html": "/sunshine/index.html",
-    "precache-manifest.8c5eb3b3ec0d20d92fcff216fe88ba39.js": "/sunshine/precache-manifest.8c5eb3b3ec0d20d92fcff216fe88ba39.js",
+    "precache-manifest.17d4810783d43ffa8c0ba69aa565cb61.js": "/sunshine/precache-manifest.17d4810783d43ffa8c0ba69aa565cb61.js",
     "service-worker.js": "/sunshine/service-worker.js",
     "static/css/main.26f19194.chunk.css.map": "/sunshine/static/css/main.26f19194.chunk.css.map",
-    "static/js/2.f2ce56db.chunk.js.LICENSE.txt": "/sunshine/static/js/2.f2ce56db.chunk.js.LICENSE.txt",
+    "static/js/2.bb3eeb15.chunk.js.LICENSE.txt": "/sunshine/static/js/2.bb3eeb15.chunk.js.LICENSE.txt",
     "static/media/8-Point-Star_black_void.svg": "/sunshine/static/media/8-Point-Star_black_void.144d18cf.svg",
     "static/media/Globe-6.svg": "/sunshine/static/media/Globe-6.c78e5332.svg",
     "static/media/MWHG50-XLARGE.jpg": "/sunshine/static/media/MWHG50-XLARGE.5dae3fc8.jpg",
     "static/media/index.css": "/sunshine/static/media/OTTOATTACTYPE.9b2efe31.ttf",
-    "static/media/Plastic_001_ROUGH.jpg": "/sunshine/static/media/Plastic_001_ROUGH.99e9084d.jpg",
+    "static/media/Plastic_001_ROUGH2.jpg": "/sunshine/static/media/Plastic_001_ROUGH2.0e5d21e8.jpg",
     "static/media/account2.svg": "/sunshine/static/media/account2.ae7020f3.svg",
     "static/media/daisy.glb": "/sunshine/static/media/daisy.f46a10bc.glb",
     "static/media/envmap.jpg": "/sunshine/static/media/envmap.58ec940d.jpg",
@@ -29,8 +29,8 @@
   },
   "entrypoints": [
     "static/js/runtime-main.f375007d.js",
-    "static/js/2.f2ce56db.chunk.js",
+    "static/js/2.bb3eeb15.chunk.js",
     "static/css/main.26f19194.chunk.css",
-    "static/js/main.12aff4ee.chunk.js"
+    "static/js/main.e35deba1.chunk.js"
   ]
 }
