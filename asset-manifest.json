@@ -1,6 +1,6 @@
 {
   "files": {
-    "main.css": "/sunshine/static/css/main.b0fb4302.chunk.css",
+    "main.css": "/sunshine/static/css/main.bdc1dc08.chunk.css",
     "main.js": "/sunshine/static/js/main.d4823588.chunk.js",
     "main.js.map": "/sunshine/static/js/main.d4823588.chunk.js.map",
     "runtime-main.js": "/sunshine/static/js/runtime-main.f375007d.js",
@@ -8,9 +8,9 @@
     "static/js/2.b9709d93.chunk.js": "/sunshine/static/js/2.b9709d93.chunk.js",
     "static/js/2.b9709d93.chunk.js.map": "/sunshine/static/js/2.b9709d93.chunk.js.map",
     "index.html": "/sunshine/index.html",
-    "precache-manifest.46e166be1d27ea7eb6f700c3b5086d29.js": "/sunshine/precache-manifest.46e166be1d27ea7eb6f700c3b5086d29.js",
+    "precache-manifest.2178e0e6e5e992e9732dd48de7cf295e.js": "/sunshine/precache-manifest.2178e0e6e5e992e9732dd48de7cf295e.js",
     "service-worker.js": "/sunshine/service-worker.js",
-    "static/css/main.b0fb4302.chunk.css.map": "/sunshine/static/css/main.b0fb4302.chunk.css.map",
+    "static/css/main.bdc1dc08.chunk.css.map": "/sunshine/static/css/main.bdc1dc08.chunk.css.map",
     "static/js/2.b9709d93.chunk.js.LICENSE.txt": "/sunshine/static/js/2.b9709d93.chunk.js.LICENSE.txt",
     "static/media/8-Point-Star_black_void.svg": "/sunshine/static/media/8-Point-Star_black_void.a5cd0efe.svg",
     "static/media/MWHG50-XLARGE.jpg": "/sunshine/static/media/MWHG50-XLARGE.5dae3fc8.jpg",
@@ -30,7 +30,7 @@
   "entrypoints": [
     "static/js/runtime-main.f375007d.js",
     "static/js/2.b9709d93.chunk.js",
-    "static/css/main.b0fb4302.chunk.css",
+    "static/css/main.bdc1dc08.chunk.css",
     "static/js/main.d4823588.chunk.js"
   ]
 }
