@@ -7,9 +7,9 @@ import React, { Component } from "react";
 import roughnessmap from "./images/Plastic_001_ROUGH2.jpg";
 import anime from "animejs/lib/anime.es.js";
 // import replyimage from "./images/noun_Reply_70802.png";
-import starimage from "./images/images.png";
+import starimage from "./images/images.jpeg";
 import starimagealpha from "./images/imagesalpha.png";
-import globeimage from "./images/Globe-5.svg";
+import globeimage from "./images/globe3.svg";
 import smileyimage from "./images/smiley.svg";
 // import smileyimage from "./images/rose-2-2015042038.svg"
 import accountimage from "./images/account2.svg";
@@ -29,6 +29,7 @@ import { Interaction } from "three.interaction";
 // import Canvas from './canvas';
 import CanvasDraw from "react-canvas-draw";
 import SignatureCanvas from 'react-signature-canvas'
+import Hamburger from 'hamburger-react'
 
 
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -59,6 +60,7 @@ var replyMeshes = {};
 var stickers = []
 var stickerIndex = 0
 var stickerCount = 0
+var stickerMesh = undefined
 
 var backDicts = []
 const transitionTime = 500
@@ -80,6 +82,11 @@ var textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "Anonymous";
 
 var grimetexture = undefined
+var paperTexture = undefined
+var starObject = createStarObject()
+
+var photoGeometry = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(1, 1, 0.000001))
+// var sticker = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(1, 1, 0.000001));
 
 function getGrimeTexture() {
 
@@ -95,11 +102,34 @@ function getGrimeTexture() {
 async function assignGrimeTexture(cube) {
   if (grimetexture === undefined) {
     getGrimeTexture().then(function() {
-      cube.roughnessMap = grimetexture
+      cube.material.roughnessMap = grimetexture
       cube.material.needsUpdate = true
     })
   } else {
-    cube.roughnessMap = grimetexture
+    cube.material.roughnessMap = grimetexture
+    cube.material.needsUpdate = true
+  } 
+}
+
+function getPaperTexture() {
+
+
+  return new Promise(resolve => {
+    textureLoader.load(papermap, function (texture) {
+      paperTexture = texture
+      resolve(texture)
+    });
+  })
+};
+
+async function assignPaperTexture(cube) {
+  if (paperTexture === undefined) {
+    getPaperTexture().then(function() {
+      cube.material.normalMap = paperTexture
+      cube.material.needsUpdate = true
+    })
+  } else {
+    cube.material.normalMap = paperTexture
     cube.material.needsUpdate = true
   } 
 }
@@ -311,6 +341,11 @@ function handleReplyUpload(element) {
 }
 
 function uploadFile(file, width, height, firebaseref, reply, replyImageUid) {
+
+  if (reply == true) {
+    var originalphoto = scene.getObjectByName(replyref);
+    originalphoto.canClick = false
+  }
   var url = `https://api.cloudinary.com/v1_1/cathedralapp/upload`;
   var xhr = new XMLHttpRequest();
   var fd = new FormData();
@@ -351,6 +386,7 @@ function uploadFile(file, width, height, firebaseref, reply, replyImageUid) {
         height: height,
         creator: firebase.auth().currentUser.uid,
         creatorusername: firebase.auth().currentUser.displayName,
+        timestamp: Date.now()
       };
 
       if (reply === false) {
@@ -412,6 +448,7 @@ function uploadFile(file, width, height, firebaseref, reply, replyImageUid) {
         //Reply action
 
         var originalphoto = scene.getObjectByName(replyref);
+        originalphoto.canClick = true
 
         var newphotoreference = photosRef.push(newPhoto).then((reference) => {
           //ref.child(snapshot.key).update({"id": snapshot.key})
@@ -576,7 +613,8 @@ function createNotification(receiverUid, originalCreatorDisplay, creatorUid, cre
     'photoUid':photoUid,
     'photoUrl':photoStub,
     'type':type,
-    'status':'unread'
+    'status':'unread',
+    'timestamp': Date.now()
   }
   // https://res.cloudinary.com/cathedralapp/image/upload/t_media_lib_thumb/v1605748082/sunshine/d9tvpfjhgobvfxbgienq.jpg
   // https://res.cloudinary.com/cathedralapp/image/upload/v1605748082/sunshine/d9tvpfjhgobvfxbgienq.jpg
@@ -595,7 +633,9 @@ async function requestLatestStickerUsers() {
     stickers = []
     snapshot.forEach( function(childSnapshot) {
       console.log("Sticker " + childSnapshot.val())
-      stickers.push(childSnapshot.val())
+      if (childSnapshot.val().stickerimage) {
+        stickers.push(childSnapshot.val())
+      }
     })
     console.log(stickers)
     shuffleArray(stickers)
@@ -689,7 +729,7 @@ async function requestLatestPhotos() {
       });
 
         photosList.reverse();
-        setUpNewFeed(photosList, undefined, animationType.fromleft)
+        setUpNewFeed(photosList, stickers, animationType.fromleft)
       })
       
       
@@ -753,6 +793,7 @@ function clearFeed() {
 
   replies = {};
    photos = [];
+   stickers = []
 
   areRepliesVisible = {};
   yRepliesDifferential = {};
@@ -760,6 +801,8 @@ function clearFeed() {
    replyMeshes = {};
    stickerIndex = 0
    stickerCount = 0
+   var stickerLeft = true
+  var stickerRandomIndex = anime.random(2, 8)
 }
 
 function requestPrivateFeed() {
@@ -800,7 +843,7 @@ function requestPrivateFeed() {
 
         if(firebaseCount === snapshotLength) {
           photosList.reverse();
-          setUpNewFeed(photosList,undefined,animationType.fromleft)
+          setUpNewFeed(photosList,undefined,animationType.fromright)
         }
       })
     });
@@ -811,6 +854,9 @@ function requestPrivateFeed() {
 
 var daisyCount = -1;
 var daisyRight = true;
+
+var stickerLeft = true
+var stickerRandomIndex = anime.random(2, 8)
 
 function generateFeed(photosList, stickers, feedAnimationType) {
   console.log("Generating feed")
@@ -839,42 +885,49 @@ function generateFeed(photosList, stickers, feedAnimationType) {
 
     createPhoto(photo.url, 0, yvalue, username, photo, type.feedphoto, feedAnimationType);
 
-    if (daisyCount === 0) {
-      addDaisy(
-        imagewidth / 2 + 0.35,
-        yvalue + (imagewidth * (photo.height / photo.width)) / 2 - 0.05,
-        daisyRight
-      );
-      daisyRight = !daisyRight;
-    } else if (daisyCount === 3) {
-      addDaisy(
-        -imagewidth / 2 - 0.3,
-        yvalue + (imagewidth * (photo.height / photo.width)) / 4,
-        daisyRight
-      );
-    } else if (daisyCount === 5) {
-      addDaisy(
-        -imagewidth / 2 - 0.3,
-        yvalue + (imagewidth * (photo.height / photo.width)) / 4,
-        daisyRight
-      );
-      daisyRight = !daisyRight;
-    } else if (daisyCount === 6) {
-      daisyCount = -1;
-    }
+    // if (daisyCount === 0) {
+    //   addDaisy(
+    //     imagewidth / 2 + 0.35,
+    //     yvalue + (imagewidth * (photo.height / photo.width)) / 2 - 0.05,
+    //     daisyRight
+    //   );
+    //   daisyRight = !daisyRight;
+    // } else if (daisyCount === 3) {
+    //   addDaisy(
+    //     -imagewidth / 2 - 0.3,
+    //     yvalue + (imagewidth * (photo.height / photo.width)) / 4,
+    //     daisyRight
+    //   );
+    // } else if (daisyCount === 5) {
+    //   addDaisy(
+    //     -imagewidth / 2 - 0.3,
+    //     yvalue + (imagewidth * (photo.height / photo.width)) / 4,
+    //     daisyRight
+    //   );
+    //   daisyRight = !daisyRight;
+    // } else if (daisyCount === 6) {
+    //   daisyCount = -1;
+    // }
 
-    daisyCount = daisyCount + 1;
+    // daisyCount = daisyCount + 1;
 
     yvalue = yvalue - (imagewidth * (photo.height / photo.width)) / 2;
 
-    if (stickerIndex === 2) {
-      yvalue = yvalue - 0.5
+    if ((stickerIndex === stickerRandomIndex) && stickers !== undefined) {
+      if (stickers[stickerCount]) {
+      yvalue = yvalue - 0.8
       yvalue = yvalue - (imagewidth * (3/4)) / 2.3
-      // createSticker(yvalue, stickers[stickerCount])
+      createSticker(yvalue, stickers[stickerCount], stickerLeft)
       yvalue = yvalue - (imagewidth * (3/4)) / 2.3
+      yvalue -= 0
+      stickerLeft = !stickerLeft
+      stickerRandomIndex = anime.random(8, 12)
+      stickerIndex = 0
       stickerCount += 1
+      }
     }
 
+    stickerLeft = !stickerLeft
     stickerIndex += 1
 
     // bottomoffeed = yvalue;
@@ -898,46 +951,62 @@ function generateFeed(photosList, stickers, feedAnimationType) {
 
 }
 
-function createSticker(yvalue, stickerobject) {
-  var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
-  var cube = new THREE.Mesh(geometry);
-  var material = new THREE.MeshStandardMaterial()
-  material.roughness = 0
-  cube.type = type.sticker
+function createStickerMesh() {
+
+    var cube = new THREE.Mesh(photoGeometry);
+    var material = new THREE.MeshStandardMaterial()
+    material.roughness = 0.15
+    material.normalScale = new THREE.Vector2(0.35,0.35)
+
+    cube.type = type.sticker
+    cube.material = material
+    cube.castShadow = true
+    cube.receiveShadow = true
+
+    assignPaperTexture(cube)
+  // textureLoader.load(papermap2, function (texture) {
+  //   console.log("TEXTURE LOADED", texture);
+  //   cube.material.roughnessMap = texture
+  //   cube.material.needsUpdate = true;
+  //   // cube.material = material;
+  // })
+
+
+  return cube
+
+};
+
+
+function createSticker(yvalue, stickerobject, stickerOnLeft) {
+
+  var cube = createStickerMesh()
+  cube.material.opacity = 0
+
   var url = stickerobject.stickerimage
-  cube.material = material
-  cube.castShadow = true
-
-  var textureLoader = new THREE.TextureLoader();
-  textureLoader.crossOrigin = "Anonymous";
-  textureLoader.load(papermap, function (texture) {
-    console.log("TEXTURE LOADED", texture);
-    cube.material.normalMap = texture
-    cube.material.needsUpdate = true;
-    // cube.material = material;
-  })
-
-  textureLoader.load(papermap2, function (texture) {
-    console.log("TEXTURE LOADED", texture);
-    cube.material.roughnessMap = texture
-    cube.material.needsUpdate = true;
-    // cube.material = material;
-  })
 
   textureLoader.load(url, function (maptexture) {
     console.log("texture loaded");
     cube.material.map = maptexture;
     cube.material.needsUpdate = true;
+    fadeInObject(cube)
   });
 
   scene.add(cube)
+  
 
   cube.position.y = yvalue
   cube.position.z = 0.05
-  cube.position.x = -imagewidth/3.75
+
+  if (stickerOnLeft === true) {
+    cube.rotation.z = 0.02 + (Math.random() * (0.1))
+    cube.position.x = -imagewidth/3.75
+  } else {
+    cube.rotation.z = -(0.02 + (Math.random() * (0.1)))
+    cube.position.x = imagewidth/3.75
+  }
 
   cube.rotation.y = -0.005
-  cube.rotation.z = 0.1
+  //cube.rotation.z = 0 + Math.random() * (-0.1 - 0.1) + -0.1;
 
   cube.scale.x = imagewidth * 1.2
   cube.scale.y = imagewidth * (3/4) * 1.2
@@ -1000,7 +1069,7 @@ function calculateNewFeedSize() {
 
 function loadUnloadPhotosByCameraDistance() {
   var cameraY = camera.position.y
-  const distanceThreshhold = 10
+  const distanceThreshhold = 20
   //sortPhotosByYPosition(photos)
   
   for (var photo of photos) {
@@ -1124,6 +1193,9 @@ function handlePhotoMouseDown(event) {
 }
 
 function contractReplies(object) {
+
+  object.canClick = true
+
   var objectreplies = [];
 
   if (replies[object.name]) {
@@ -1200,6 +1272,9 @@ function contractReplies(object) {
             duration: 400,
           },
         ],
+        complete: function() {
+          object.canClick = true
+        }
       });
     }
   }
@@ -1317,6 +1392,8 @@ function contractReplies(object) {
 }
 
 function displayReplies(object) {
+  object.canClick = false
+
   console.log("Object scale " + object.scale.y);
   const startingyvalue = object.scale.y / 2;
   var yvalue = object.position.y - startingyvalue;
@@ -1396,6 +1473,8 @@ function displayReplies(object) {
           addTimeRandomNumber
         );
 
+        calculateNewFeedSize();
+
         var badgeStyle = "globe"
     
         if (followingList[value.creator] === true) {
@@ -1440,21 +1519,20 @@ function displayReplies(object) {
       complete: function () {
         photos.push(value.object);
 
-        textureLoader.load(roughnessmap, function (texture) {
-          console.log("TEXTURE LOADED", texture);
-          //value.object.material.roughnessMap = texture;
+        var material = new THREE.MeshStandardMaterial();
+         value.object.material = material;
+         assignGrimeTexture(value.object)
+
 
           textureLoader.load(value.url, function (maptexture) {
             console.log("texture loaded");
-            var material = new THREE.MeshStandardMaterial();
             material.map = maptexture;
-            material.roughnessMap = texture;
+            //material.roughnessMap = texture;
 
-            value.object.material = material;
             // value.object.material.map = maptexture;
-            // value.object.material.needsUpdate = true;
+             value.object.material.needsUpdate = true;
           });
-        });
+    
       },
     });
 
@@ -1511,9 +1589,12 @@ function displayReplies(object) {
           {
             value: photo.position.y + yvalue - object.position.y + nextPhotoDifferential,
             easing: "easeInOutQuad",
-            duration: 750,
+            duration: 550,
           },
         ],
+        complete: function() {
+          object.canClick = true
+        }
       });
     }
   }
@@ -1606,6 +1687,22 @@ function createReplyMesh(yvalue, id) {
   replymesh.on("click", function () {
     replyref = id;
     document.getElementById("reply-input").click();
+    anime({
+      targets: replymesh.position,
+      z: [
+        {
+          value: photozposition - 0.3 - 0.25,
+          easing: "easeInOutQuad",
+          duration: 100,
+        },
+        {
+          value: photozposition - 0.3,
+          easing: "easeInOutQuad",
+          duration: 300,
+          delay: 100,
+        },
+      ],
+    });
   });
 }
 
@@ -1638,9 +1735,11 @@ function drawReplySymbol() {
   path.lineTo(-0.3 , 0 )
   path.lineTo(-0.05 , -0.2 )
   path.lineTo(-0.3 , 0 )
-  path.lineTo( 0.1, 0 )
+  path.lineTo( 0, 0 )
   path.quadraticCurveTo( 0.3, 0,   0.3, -0.20)
-  path.quadraticCurveTo( 0.3, -0.4,   0, -0.40)
+  path.quadraticCurveTo( 0.3, -0.4,   0.1, -0.4)
+  path.quadraticCurveTo( -0.1, -0.2,0.1, -0.1)
+
 
   var points = path.getPoints(25);
 
@@ -1785,7 +1884,7 @@ function handlePhotoMouseUp(event) {
 }
 
 function createReplyPlaceholder(originalcube, index) {
-  var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
+  var geometry = photoGeometry
 
   var color = generateReplyPlaceholderColor(index); //parseInt(
   //   "0x" + interpolateColors("3773B3", primarywhite, 1 / (index * 1.4), 16)
@@ -1837,10 +1936,32 @@ function fadeInObject(object) {
       {
         value: 1,
         easing: "easeInOutQuad",
-        duration: 350,
+        duration: 300,
       },
     ],
   });
+}
+
+function createStarObject() {
+  var geometry = new THREE.BufferGeometry().fromGeometry(new THREE.PlaneGeometry(0.0865, 0.08565, 0.1))
+  var material = new THREE.MeshStandardMaterial();
+  material.metalness = 0.5;
+  material.roughness = 0.1;
+  material.transparent = true;
+  var object = new THREE.Mesh(geometry, material);
+
+
+  // eslint-disable-next-line no-loop-func
+  textureLoader.load(starimage, function (texture) {
+    material.map = texture;
+    material.roughnessMap = texture;
+    textureLoader.load(starimagealpha, function (texture) {
+      material.alphaMap = texture;
+      material.needsUpdate = true
+    })
+  })
+
+  return object
 }
 
 function addMoveStar(parentobject, starKey, xposition, yposition) {
@@ -1856,20 +1977,20 @@ function addMoveStar(parentobject, starKey, xposition, yposition) {
     return
   }
 
-  var geometry = new THREE.PlaneGeometry(0.1, 0.1, 0.1);
-  var material = new THREE.MeshStandardMaterial();
-  material.metalness = 0.5;
-  material.roughness = 0.1;
-  material.transparent = true;
+  // var geometry = new THREE.PlaneGeometry(0.1, 0.1, 0.1);
+  // var material = new THREE.MeshStandardMaterial();
+  // material.metalness = 0.5;
+  // material.roughness = 0.1;
+  // material.transparent = true;
 
-  // eslint-disable-next-line no-loop-func
-  textureLoader.load(starimage, function (texture) {
-    material.map = texture;
-    material.roughnessMap = texture;
-    textureLoader.load(starimagealpha, function (texture) {
-      material.alphaMap = texture;
-      var object = new THREE.Mesh(geometry, material);
-
+  // // eslint-disable-next-line no-loop-func
+  // textureLoader.load(starimage, function (texture) {
+  //   material.map = texture;
+  //   material.roughnessMap = texture;
+  //   textureLoader.load(starimagealpha, function (texture) {
+  //     material.alphaMap = texture;
+  //     var object = new THREE.Mesh(geometry, material);
+    const object = new THREE.Mesh(starObject.geometry, starObject.material.clone())
       parentobject.add(object);
       object.position.set(xposition, yposition, 0.0001);
       //object.rotation.z = Math.random() * Math.PI
@@ -1882,14 +2003,14 @@ function addMoveStar(parentobject, starKey, xposition, yposition) {
       );
 
       fadeInObject(object)
-    });
-  });
+  //   });
+  // });
 }
 
 
 
 
-async function createPhoto(
+function createPhoto(
   url,
   xposition,
   yposition,
@@ -1901,8 +2022,8 @@ async function createPhoto(
   newphoto,
   newreply
 ) {
-  var geometry = new THREE.BoxGeometry(1, 1, 0.000001);
-  var cube = new THREE.Mesh(geometry);
+  // var photoGeometry = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(1, 1, 0.000001))
+  var cube = new THREE.Mesh(photoGeometry);
   var material = new THREE.MeshStandardMaterial()
   cube.material = material
 
@@ -1934,6 +2055,8 @@ async function createPhoto(
     cube.position.y = yposition;
     cube.position.x = xposition;
 
+    cube.canClick = false
+
     var badgeStyle = "globe"
     var badgeColor = "#fe5b30"
 
@@ -1959,7 +2082,10 @@ async function createPhoto(
             easing: "spring(1, 80, 10, 0)",
             duration: 800 + -yposition * 100,
           },
-        ],
+        ], 
+        complete: function() {
+          cube.canClick = true
+        }
       });
 
       anime({
@@ -2007,7 +2133,7 @@ async function createPhoto(
           },
         ],
         easing: "spring(1, 80, 20, 0)",
-        duration: 3000
+        duration: 3000,
       });
 
       anime({
@@ -2017,9 +2143,12 @@ async function createPhoto(
             value: xposition,
           },
         ],
-        easing: "spring(1, 80, 20, 0)",
+        easing: "spring(1, 100, 20, 0)",
         duration: 1800,
-        delay: anime.random(0, 150)
+        delay: anime.random(0, 150),
+        complete: function() {
+          cube.canClick = true
+        }
       });
 
       anime({
@@ -2066,7 +2195,10 @@ async function createPhoto(
         ],
         easing: "spring(1, 80, 20, 0)",
         duration: 1800,
-        delay: anime.random(0, 150)
+        delay: anime.random(0, 150),
+        complete: function() {
+          cube.canClick = true
+        }
       });
 
       anime({
@@ -2146,7 +2278,9 @@ function addPhotoClickEvent(cube) {
   cube.cursor = "pointer";
   cube.on("click", (ev) => {
     console.log(ev);
-    handlePhotoMouseDown(ev);
+    if (ev.intersects[0].object.canClick === true) {
+      handlePhotoMouseDown(ev);
+    }
   });
 }
 
@@ -2161,6 +2295,7 @@ function addStarsRefs(cube, key) {
   console.log(data)
   addMoveStar(cube, data.key, data.val().xposition, data.val().yposition)
 });
+ cube.starsRef = starsRef
 }
 
 function addUIDToFollowList(uid) {
@@ -2347,11 +2482,12 @@ CanvasRenderingContext2D.prototype.fillTextCircle = function (
   this.restore();
 };
 
-function drawImage(ctx, x, imageToDraw) {
+function drawImage(ctx, x, imageToDraw, texture) {
 
   var image = new Image()
   image.onload = function() {
-    ctx.drawImage(image,x/4,x/4,x/2,x/2)
+    ctx.drawImage(image,x/3.72,x/3.72,x/2.15,x/2.15)
+    texture.needsUpdate = true
   }
   image.src = imageToDraw
 
@@ -2381,6 +2517,10 @@ function circleBadge(
   var textcanvas = document.createElement("canvas");
   var ctx = textcanvas.getContext("2d");
 
+var texture = new THREE.Texture(textcanvas); // now make texture
+  texture.minFilter = THREE.LinearFilter; // eliminate console message
+  //texture.needsUpdate = true;
+
   textcanvas.width = x;
   textcanvas.height = y;
 
@@ -2390,9 +2530,9 @@ function circleBadge(
   //ctx.fillRect(0, 0, ctx.width, ctx.height);
 
   if (badgeStyle === "globe") {
-    drawImage(ctx, x, globeimage)
+    drawImage(ctx, x, globeimage, texture)
   } else if (badgeStyle === "following") {
-    drawImage(ctx, x, smileyimage)
+    drawImage(ctx, x, smileyimage, texture)
   }
 
   ctx.fill();
@@ -2404,17 +2544,15 @@ function circleBadge(
 
   ctx.stroke();
 
-  var texture = new THREE.Texture(textcanvas); // now make texture
-  texture.minFilter = THREE.LinearFilter; // eliminate console message
-  texture.needsUpdate = true;
+
 
   //var geometry = new THREE.CylinderGeometry(threejsdimension, threejsdimension, 0.05, 20);
-  var geometry = new THREE.CircleGeometry(threejsdimension / 2, 20);
-  var material1 = new THREE.MeshStandardMaterial({
+  var geometry = new THREE.BufferGeometry().fromGeometry( new THREE.CircleGeometry(threejsdimension / 2, 20))
+  var material1 = new THREE.MeshBasicMaterial({
     color: 0xfe5b30,
     opacity: 1.0,
   });
-  var material2 = new THREE.MeshStandardMaterial({
+  var material2 = new THREE.MeshBasicMaterial({
     side: THREE.DoubleSide,
     map: texture,
     transparent: true,
@@ -2457,10 +2595,17 @@ class ThreeJS extends Component {
       0.1,
       8
     );
+    if (((window.innerWidth / window.innerHeight) * 1.6666) < 1) {
+      camera.zoom = (window.innerWidth / window.innerHeight) * 1.6666
+    } else {
+      camera.zoom = 1
+    }
+
 
     var renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setClearColor(0xffffff, 0);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2 || 1));
+    renderer.powerPreference = "low-power"
     renderer.shadowMap.enabled = true;
     renderer.shadowMapSoft = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2481,6 +2626,7 @@ class ThreeJS extends Component {
 
     scene.add(camera);
     camera.position.z = 5;
+    camera.zoom = 1
 
     const interaction = new Interaction(renderer, scene, camera);
 
@@ -2651,22 +2797,24 @@ class ThreeJS extends Component {
     // });
 
     var spotLight = new THREE.DirectionalLight(0xfff1db);
-    spotLight.intensity = 1;
+    spotLight.intensity = 0.65;
 
     spotLight.castShadow = true;
 
     const shadowmapmultiplier = 3;
 
-    spotLight.shadow.mapSize.width = 1024 * 2.5;
-    spotLight.shadow.mapSize.height = 1024 * 2.5;
+    spotLight.shadow.mapSize.width = 1024 * 1;
+    spotLight.shadow.mapSize.height = 1024 * 1;
 
-    const d = 10;
+    const d = 4;
+
+    spotLight.shadow.bias = - 0.0005
 
     spotLight.shadow.camera.left = -d;
     spotLight.shadow.camera.right = d;
     spotLight.shadow.camera.top = d;
     spotLight.shadow.camera.bottom = -d;
-    spotLight.shadow.radius = 10;
+    spotLight.shadow.radius = d;
 
     spotLight.target.position.set(0, 0, 0);
     //spotLight.shadow.bias = -0.0005
@@ -2674,6 +2822,9 @@ class ThreeJS extends Component {
     spotLight.position.set(0, 5.25, 10);
 
     camera.add(spotLight.target);
+
+    var light2 = new THREE.AmbientLight(0xfff1db,0.45)
+    scene.add(light2)
 
     // var light2 = new THREE.DirectionalLight(0xfff1db); // soft white light
     // light2.intensity = 0.25;
@@ -2734,7 +2885,22 @@ class ThreeJS extends Component {
       {
           console.log("at the bottom");
           currentPage += 1
-          generateFeed(paginateArray(currentPhotosList,20,currentPage),undefined,animationType.fromleft)
+
+          var feedAnimationType = animationType.fromleft
+
+          if (window.App.state.mode === "all") {
+            feedAnimationType = animationType.fromleft
+          } 
+          
+          if (window.App.state.mode === "private") {
+            feedAnimationType = animationType.fromright
+          } 
+          
+          if (backDicts.length > 0) {
+            feedAnimationType = animationType.fromright
+          }
+
+          generateFeed(paginateArray(currentPhotosList,20,currentPage),stickers,feedAnimationType)
       }
     };
 
@@ -2748,21 +2914,26 @@ class ThreeJS extends Component {
       var scrolled = winScroll / height;
       camera.position.y = 0 - winScroll / 100;
       //spotLight.position.y = 0 + bottomoffeed * scrolled;
-      rotationmodifier = Math.abs(checkScrollSpeed());
+      //rotationmodifier = Math.abs(checkScrollSpeed());
       //console.log (checkScrollSpeed())
     }
 
     var globalResizeTimer = null;
 
     $(window).resize(function () {
-      if (globalResizeTimer != null) window.clearTimeout(globalResizeTimer);
-      globalResizeTimer = window.setTimeout(function () {
+      // if (globalResizeTimer != null) window.clearTimeout(globalResizeTimer);
+      // globalResizeTimer = window.setTimeout(function () {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-
+        if (((window.innerWidth / window.innerHeight) * 1.6666) < 1.05) {
+          camera.zoom = (window.innerWidth / window.innerHeight) * 1.6666
+        } else {
+          camera.zoom = 1
+        }
         renderer.setSize(window.innerWidth, window.innerHeight);
-      }, 200);
-    });
+      // }, 200);
+    }
+    );
 
     var scrollStop = function (callback) {
       // Make sure a valid callback was provided
@@ -2823,7 +2994,8 @@ class AccountForm extends Component {
     this.state = {
       formDisplay: false,
       strokeCount: 0,
-      notificationList:[]
+      notificationList:[],
+      number:""
     };
     this.dismissForm = this.dismissForm.bind(this)
     this.stickerForm = React.createRef()
@@ -2833,6 +3005,10 @@ class AccountForm extends Component {
     this.addStroke = this.addStroke.bind(this)
     this.clearStroke = this.clearStroke.bind(this)
     this.requestUserPhotos = this.requestUserPhotos.bind(this)
+  }
+
+  componentDidMount() {
+
   }
 
   addStroke() {
@@ -2915,11 +3091,14 @@ class AccountForm extends Component {
   requestUserPhotos(uid, displayName) {
     this.props.goForward(displayName, uid, this.accountForm.current, requestUserPhotos, uid, photos)
     this.props.dismissAccountForm()
+    this.props.setHamburgerHidden()
   }
 
   requestSinglePhoto(uid, creatorName) {
     this.props.goForward(creatorName + "'s photo", "", this.accountForm.current, requestSinglePhoto, uid, photos)
     this.props.dismissAccountForm()
+    this.props.setHamburgerHidden()
+
   }
 
   render() {
@@ -2937,15 +3116,16 @@ class AccountForm extends Component {
         <div class="row">
   <div class="block">
     <h1>
-      <span><div className="usertext">{this.props.loggedInUser['username']||''}</div></span>
+      <span><div className="usertext">{this.props.loggedInUser['username']||''}
+      <div className="usernumber">&#10036;&#xFE0E;{this.props.userNumber}</div></div></span>
     </h1>
    </div>
 </div>
 </div>
        {/* <div className="accountreadout"> */}
        <NotificationList newNotifications={this.props.newNotifications} ref={this.notificationList} notificationList={this.state.notificationList} requestSinglePhoto={this.requestSinglePhoto.bind(this)} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></NotificationList>
-
        <ShortUserList requestUserPhotos={this.requestUserPhotos.bind(this)} setCurrentTitle={this.props.setCurrentTitle} accountForm={this.accountForm.current} currentTitle={this.props.currentTitle}></ShortUserList>
+       <DialList/>
 
          <div className="toolbarcontainer">
       <button id="title" onClick={() => this.requestUserPhotos(firebase.auth().currentUser.uid, firebase.auth().currentUser.displayName)}><div className="buttonsymbol">&#12297;</div>View Photos</button>
@@ -3094,9 +3274,7 @@ class StickerForm extends Component {
 
   render() {
     return (
-      <div className={"signatureform " + (this.props.formDisplay
-      ? "canvasopen"
-      : "")} >
+      <div className={"signatureform "} >
 <SignatureCanvas onEnd={this.props.addStroke} ref={this.sigCanvas} canvasProps={{width: 400, height: 300, className: 'sigCanvas'}}></SignatureCanvas>
 <div className="stickerbuttoncontainer"><button onClick={this.undo}>&#x27f2;</button></div>
         </div>
@@ -3267,6 +3445,7 @@ class LoginForm extends Component {
           component.setState({
             success:true
           })
+          component.props.loginRegisterAction(firebase.auth().currentUser.uid)
           component.props.handleUpload();
         })
         .catch(function (error) {
@@ -3429,11 +3608,186 @@ class LoginForm extends Component {
   }
 }
 
+class DialList extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      menuOpen: false,
+    };
+  }
+
+  toggleMenu() {
+    this.setState({
+      menuOpen: !this.state.menuOpen
+    })
+    
+  }
+
+  render() {
+
+    return (
+      <div className="shortuserlist">
+      
+      <div onClick={() => this.toggleMenu()} className="listtitle">&#10036;&#xFE0E; DIALER <div className={"arrow " +
+                  (this.state.menuOpen
+                    ? "arrowrotate"
+                    : "")}>&#x25BE;</div></div>
+      <div  className={"list " +
+                (this.state.menuOpen
+                  ? "listexpanded"
+                  : "")}>
+        <Dialer/>
+        {/* {shortUsers} */}
+      </div>
+      <div className="divider"></div>
+      </div>
+    );
+  }
+}
+
+var initialMessage = "Dial someone?"
+
+class Dialer extends Component {
+  constructor(props) {
+    super();
+    this.state = {
+      displayName: "",
+      number: "",
+      isFollowing: true,
+      message:initialMessage,
+      currentAnimation:anime({})
+
+    };
+    this.handleInput = this.handleInput.bind(this)
+    this.dialerReport = React.createRef()
+  }
+
+  componentDidMount() {
+  }
+
+  handleFollow() {
+    handleFollow(this.props.uid)
+    // this.setState({
+    //   isFollowing:true
+    // })
+  }
+
+  handleUnfollow() {
+    handleUnfollow(this.props.uid)
+    // this.setState({
+    //   isFollowing:false
+    // })
+  }
+
+  showResponse(message) {
+    var component = this
+
+  anime.remove(component.dialerReport.current)
+    
+    component.setState({
+      message:message
+    }, function() {
+
+     var animation = anime({
+        targets: component.dialerReport.current,
+        opacity: [{ value: "0.8", easing: "easeInOutQuad", duration: 300}],
+      complete: function() {
+        anime({
+          targets: component.dialerReport.current,
+          opacity: [{ value: "0", easing: "easeInOutQuad", duration: 4000}]})
+      }})
+
+    component.setState({
+      currentAnimation:animation
+    })
+
+    })
+
+  }
+
+  handleInput(event) {
+    const component = this
+
+    event.preventDefault()
+
+    console.log("HANDLING INPUT")
+
+    const isnum = /^\d+$/.test(event.target.value)
+
+    if (!isnum) {
+      console.log("ISN'T NUMBER")
+
+      event.target.value = ""
+      this.showResponse("You can only dial numbers.")
+    }
+
+    if(event.target.value.length === 4) {
+      const value = event.target.value
+      event.target.value = ""
+      firebase.database().ref('users/').orderByChild('number').equalTo(value).once('value', function(snapshot) {
+        
+        var snapshotCount = 0
+
+        snapshot.forEach(function(childSnapshot) {
+
+          const user = childSnapshot.val()
+          handleFollow(childSnapshot.key)
+          component.showResponse("Followed " + user.username + ".")
+          snapshotCount += 1
+
+        })
+
+        if (snapshotCount === 0) {
+
+          component.showResponse("No user with that number.")
+
+        }
+
+      })
+    }
+  }
+
+  handleFocus(event) {
+
+    if (this.state.message === initialMessage) {
+      var animation = anime({targets: this.dialerReport.current,
+      opacity: [{ value: "0", easing: "easeInOutQuad", duration: 4000}]})
+
+      this.setState({
+        currentAnimation:animation
+      })
+    }
+
+  }
+
+  render() {
+    return (
+      <div className="dialercontainer" id={this.props.uid} >
+        <div className="dialerreport" ref={this.dialerReport}>{this.state.message}</div>
+        <div className="staranddialer">
+        <div className="dialerstar">&#10036;&#xFE0E;</div>
+        <div className="dialer">
+
+        <input onFocus={event => this.handleFocus(event)} pattern="[0-9]*" inputmode="numeric" onInput={event => this.handleInput(event)} className="dialerinput" type="number"></input>
+        <div className="dialerlinecontainer">
+          <div className="dialerline"></div>
+          <div className="dialerline"></div>
+          <div className="dialerline"></div>
+          <div className="dialerline"></div>
+          </div>
+          </div>
+          </div>
+      </div>
+    );
+  }
+}
+
 class ShortUser extends Component {
   constructor(props) {
     super();
     this.state = {
       displayName: "",
+      number: "",
       isFollowing: true
     };
   }
@@ -3451,6 +3805,7 @@ class ShortUser extends Component {
       //console.log(snapshot.val().username)
       component.setState({
         displayName:snapshot.val().username || "",
+        number:snapshot.val().number || ""
       })
     })
 
@@ -3486,7 +3841,9 @@ class ShortUser extends Component {
   render() {
     return (
       <div className="shortuser" id={this.props.uid} >
-        <div onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)} className="shortusertext">{this.state.displayName}</div>
+        <div onClick={() => this.props.requestUserPhotos(this.props.uid, this.state.displayName)} className="shortusertext">{this.state.displayName}
+    <div className="shortusernumber">&#10036;&#xFE0E;{this.state.number}</div>
+        </div>
         {/* <div className="shortuserbuttoncontainer"> */}
         <button style={this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleUnfollow.bind(this)} className="shortuserbutton plus">&#65293;</button>
         <button style={!this.state.isFollowing ? {} : {display:'none'}} onClick={this.handleFollow.bind(this)} className="shortuserbutton plus">&#65291;</button>
@@ -3559,7 +3916,7 @@ class ShortUserList extends Component {
     return (
       <div className="shortuserlist">
       
-      <div onClick={() => this.toggleMenu()} className="listtitle">FOLLOWING <div className={"arrow " +
+      <div onClick={() => this.toggleMenu()} className="listtitle">&#8942;&#xFE0E; FOLLOWING <div className={"arrow " +
                   (this.state.menuOpen
                     ? "arrowrotate"
                     : "")}>&#x25BE;</div></div>
@@ -3567,6 +3924,7 @@ class ShortUserList extends Component {
                 (this.state.menuOpen
                   ? "listexpanded"
                   : "")}>
+        {/* <Dialer/> */}
         {shortUsers}
       </div>
       <div className="divider"></div>
@@ -3680,12 +4038,12 @@ class NotificationList extends Component {
 
   render() {
     var notifications = this.props.notificationList.map((d) => 
-    <Notification requestSinglePhoto={this.props.requestSinglePhoto} currentTitle={this.props.currentTitle} notification={d.val()}></Notification>);
+    <Notification key={d.key} uid={d.key} requestSinglePhoto={this.props.requestSinglePhoto} currentTitle={this.props.currentTitle} notification={d.val()}></Notification>);
 
     return (
       <div className="shortuserlist">
       
-      <div onClick={() => this.toggleMenu()} className="listtitle">NOTIFICATIONS <div style={this.props.newNotifications ? {opacity:1}: {opacity:0}}  className="notificationDot menuNotificationDot"></div> <div className={"arrow " +
+      <div onClick={() => this.toggleMenu()} className="listtitle">&#9900;&#xFE0E; NOTIFICATIONS <div style={this.props.newNotifications ? {opacity:1}: {opacity:0}}  className="notificationDot menuNotificationDot"></div> <div className={"arrow " +
                   (this.state.menuOpen
                     ? "arrowrotate"
                     : "")}>&#x25BE;</div></div>
@@ -3810,7 +4168,9 @@ class App extends Component {
       currentTitleUidFollowing: true,
       mode: "all",
       firstLoad:true,
-      newNotifications:false
+      newNotifications:false,
+      hamburgerHidden:true,
+      userNumber:""
     };
     window.App = this;
     this.backTitle = React.createRef()
@@ -3819,6 +4179,7 @@ class App extends Component {
     this.goBack = this.goBack.bind(this)
     this.submitInput = React.createRef()
     this.replyInput = React.createRef()
+    this.noFollowingNotification = React.createRef()
   }
 
   componentDidMount() {
@@ -3832,7 +4193,6 @@ class App extends Component {
         console.log(user);
         var isAnonymous = user.isAnonymous;
         var uid = user.uid;
-        var displayname = user.displayName;
 
         console.log(JSON.stringify(firebase.auth().currentUser))
         component.setState(
@@ -3845,18 +4205,8 @@ class App extends Component {
 
         if (!user.isAnonymous) {
 
-          component.createNotificationsListener(uid)
+          component.loginRegisterAction(user.uid)
 
-          firebase
-          .database()
-          .ref("users/" + uid)
-          .on('value', function (snapshot) {
-            console.log("firebase user ref")
-            console.log(snapshot.val())
-            component.setState({
-              loggedInUser:snapshot.val()
-            })
-          })
         }
 
         getFollowing(user.uid).then( function() {
@@ -3883,10 +4233,51 @@ class App extends Component {
             console.log(errorMessage);
           });
 
+          component.setState({
+
+            hamburgerHidden:true
+
+          })
 
       }
       // ...
     });
+  }
+
+  loginRegisterAction(uid) {
+
+    const component = this 
+
+    component.createNotificationsListener(uid)
+
+    firebase
+    .database()
+    .ref("users/" + uid)
+    .once('value', function (snapshot) {
+      console.log("firebase user ref")
+      console.log(snapshot.val())
+      component.setState({
+        currentUser:firebase.auth().currentUser.displayName,
+        isAnonymous:false,
+        loggedInUser:snapshot.val(),
+        hamburgerHidden:false,
+        userNumber: snapshot.val().number || ""
+      })
+    })
+
+    firebase
+    .database()
+    .ref("users/" + uid)
+    .on('child_added', function (snapshot) {
+
+      if(snapshot.key === "number") {
+        component.setState({
+          userNumber: snapshot.val()
+        })
+      }
+
+    })
+
   }
 
   createNotificationsListener(uid) {
@@ -3899,6 +4290,19 @@ class App extends Component {
       component.accountForm.current.requestNotifications()
     })
   }
+
+  setHamburgerHidden() {
+    this.setState({
+      hamburgerHidden: true
+    })
+  }
+
+  setHamburgerShow() {
+    this.setState({
+      hamburgerHidden: false
+    })
+  }
+
 
   setNewNotifications() {
     this.setState({
@@ -3943,6 +4347,14 @@ class App extends Component {
       mode:"private"
     })
     requestPrivateFeed()
+
+    if (Object.entries(followingList).length === 0) {
+      anime({
+        targets: this.noFollowingNotification.current,
+        opacity: [{ value: "0.8", easing: "easeInOutQuad", duration: 300},
+        { value: "0", easing: "easeInOutQuad", duration: 4000}
+      ]})
+    }
   }
 
   requestPublicFeed() {
@@ -3986,7 +4398,7 @@ class App extends Component {
         setUpNewFeed(backDict.photosList,backDict.stickers, animationType.fromleft, backDict.scroll)
       }, transitionTime - 100);
 
-      this.setCurrentTitle(backDict.title, backDict.uid)
+      this.setCurrentTitle(backDict.title, backDict.uid, "back")
 
       if (backDict.div) {
         backDict.div.classList.remove('sentBack')
@@ -4003,7 +4415,13 @@ class App extends Component {
       this.setState({
         minimalUI:false,
         currentTitle:"",
-        currentTitleUid:""
+        currentTitleUid:"",
+      })
+    }
+
+    if (backDicts.length === 0 && this.state.isAnonymous === false) {
+      this.setState({
+        hamburgerHidden:false
       })
     }
 
@@ -4019,10 +4437,87 @@ class App extends Component {
        newPhotosFunction(functionArgument)
     }, transitionTime - 100);    
 
-    this.setCurrentTitle(newTitle, newUid)
+    this.setCurrentTitle(newTitle, newUid, "forward")
 
+    this.setState({
+      hamburgerHidden:true
+    })
 
   }
+
+  // setCurrentTitle(title,uid,direction) {
+  //   var component = this
+  //   if (direction === "forward" && backDicts.length > 1) {
+
+  //     setTimeout(function() {
+  //       component.setState({
+  //       currentTitle:title,
+  //        currentTitleUid: uid
+  //       })
+  //     }, 300)
+
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {value: '0px'},
+  //         {
+  //           value: "-20px",
+  //           easing: "easeInQuad",
+  //           duration: 300,
+  //         },
+  //         {value:'20px'},
+  //         {
+  //           value: "0px",
+  //           easing: "easeOutQuad",
+  //           duration: 300,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {value: 1},
+  //         {
+  //           value: 0,
+  //           easing: "easeInQuad",
+  //           duration: 300,
+  //         },
+  //         {value:0},
+  //         {
+  //           value: 1,
+  //           easing: "easeOutQuad",
+  //           duration: 300,
+  //         }
+  //       ]
+  //     })
+  //   }
+  //   if (direction === "forward" && backDicts.length === 1) {
+
+  //     setTimeout(function() {
+  //       component.setState({
+  //       currentTitle:title,
+  //        currentTitleUid: uid
+  //       })
+  //     }, 0)
+
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {value:'20px'},
+  //         {
+  //           value: "0px",
+  //           easing: "easeOutQuad",
+  //           duration: 300,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {value:0},
+  //         {
+  //           value: 1,
+  //           easing: "easeOutQuad",
+  //           duration: 300,
+  //         }
+  //       ]
+  //     })
+  //   }
+  // }
 
   setCurrentTitle(title, uid) {
     console.log("TITLE " + title)
@@ -4032,6 +4527,200 @@ class App extends Component {
     }, () => {
       this.checkIfFollowingTitleUid()})
   }
+
+  // setCurrentTitle(title, uid, direction) {
+
+  //   var component = this
+  //   if (direction === "forward" && backDicts.length > 0) {
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {
+  //           value: "-20px",
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {
+  //           value: 0,
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //           complete: function() {
+  //               component.setState({
+  //       currentTitle:title,
+  //       currentTitleUid: uid
+  //     }, () => {
+  //       component.checkIfFollowingTitleUid()
+  //       anime({
+  //         targets: component.backTitle.current,
+  //         translateX: [
+  //           {
+  //             value: "20px",
+  //           },
+  //           {
+  //             value: "0px",
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }
+  //         ],
+  //         opacity: [
+  //           {value:0},
+  //           {
+  //             value: 1,
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }]
+  //         })
+  //     })
+  //           }
+  //         }
+  //       ]
+  //     });
+  //   }
+  //   if (direction === "forward" && backDicts.length === 0) {
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {
+  //           value: "-20px",
+  //           easing: "easeInOutQuad",
+  //           duration: 0,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {
+  //           value: 0,
+  //           easing: "easeInOutQuad",
+  //           duration: 0,
+  //           complete: function() {
+  //               component.setState({
+  //       currentTitle:title,
+  //       currentTitleUid: uid
+  //     }, () => {
+  //       component.checkIfFollowingTitleUid()
+  //       anime({
+  //         targets: component.backTitle.current,
+  //         translateX: [
+  //           {
+  //             value: "20px",
+  //           },
+  //           {
+  //             value: "0px",
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }
+  //         ],
+  //         opacity: [
+  //           {value:0},
+  //           {
+  //             value: 1,
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }]
+  //         })
+  //     })
+  //           }
+  //         }
+  //       ]
+  //     });
+  //   }
+  //   if (direction === "back" && backDicts.length > 0) {
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {
+  //           value: "20px",
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {
+  //           value: 0,
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //           complete: function() {
+  //               component.setState({
+  //       currentTitle:title,
+  //       currentTitleUid: uid
+  //     }, () => {
+  //       component.checkIfFollowingTitleUid()
+  //       anime({
+  //         targets: component.backTitle.current,
+  //         translateX: [
+  //           {
+  //             value: "-20px",
+  //           },
+  //           {
+  //             value: "0px",
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }
+  //         ],
+  //         opacity: [
+  //           {value:0},
+  //           {
+  //             value: 1,
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }]
+  //         })
+  //     })
+  //           }
+  //         }
+  //       ]
+  //     });
+  //   }
+
+  //   if (direction === "back" && backDicts.length === 0) {
+  //     anime({
+  //       targets: this.backTitle.current,
+  //       translateX: [
+  //         {
+  //           value: "20px",
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //         }
+  //       ],
+  //       opacity: [
+  //         {
+  //           value: 0,
+  //           easing: "easeInOutQuad",
+  //           duration: 300,
+  //           complete: function() {
+  //               component.setState({
+  //       currentTitle:title,
+  //       currentTitleUid: uid
+  //     }, () => {
+  //       component.checkIfFollowingTitleUid()
+  //       anime({
+  //         targets: component.backTitle.current,
+  //         translateX: [
+  //           {
+  //             value: "-20px",
+  //           },
+  //           {
+  //             value: "0px",
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }
+  //         ],
+  //         opacity: [
+  //           {value:0},
+  //           {
+  //             value: 1,
+  //             easing: "easeInOutQuad",
+  //             duration: 300
+  //           }]
+  //         })
+  //     })
+  //           }
+  //         }
+  //       ]
+  //     });
+  //   }
+  // }
 
   submitInputOnChange(event) {
     uploadStyle= "submit"
@@ -4109,43 +4798,55 @@ class App extends Component {
     })
   }
 
+  shineButtonClick() {
+    this.submitInput.current.click()
+  }
+
   render() {
     return (
       <div>
             <div class="title" >
+              <div className="titleBar">
+              <div  style={this.state.hamburgerHidden ? {maxWidth:0, opacity:0, marginRight:0}: {maxWidth:75,opacity:1}} className="titleMenu">
+    
+    <Hamburger size={26} distance={"large"} onToggle={toggled => {
+      if (toggled) {
+        this.showAccountForm()
+      } else {
+        this.accountForm.current.dismissForm()
+      }
+    }}></Hamburger>
+    <div style={this.state.newNotifications ? {opacity:1}: {opacity:0}} className="notificationDot accountNotificationDot"></div>
+        </div>
     <div class="titletext" >SUNSHINE</div>
+
+      </div>
     <div id="progress" className="progress">
     </div>
-    <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto", bottom: '15px'}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>&#10005;</button>
+    {/* <button className="modebutton closeAccountButton" onClick={this.closeAccountButton.bind(this)} style={this.state.accountFormOpen ? {opacity:1,pointerEvents:"all", overflow:"auto", bottom: '15px'}: {opacity:0,pointerEvents:"none",overflow:"hidden" }}>&#10005;</button> */}
 
     <div className="backTitle " ref={this.backTitle} style={this.state.currentTitle ? {'opacity':'1', 'max-height':100} : {'opacity':'0', 'max-height':0, 'margin-bottom':'-10px'}}><div onClick={this.goBack.bind(this)} className="backButton" style={this.state.currentTitle ? {'display':'inline-block'} : {'display' :'none'}}>&#x27F5;&#xFE0E;</div>{this.state.currentTitle ? this.state.currentTitle : ""}
-    <button className="titleFollowButton" onClick={this.handleTitleFollow.bind(this)} style={this.state.currentTitleUid && !this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Follow</button>
-    <button className="titleFollowButton" onClick={this.handleTitleUnfollow.bind(this)} style={this.state.currentTitleUid && this.state.currentTitleUidFollowing ? {'display':'inline-block', pointerEvents:'all'} : {'display' :'none'}}>Unfollow</button>
     </div>
 
-    <AccountForm newNotifications={this.state.newNotifications} setNotificationsRead={this.setNotificationsRead.bind(this)} goForward={this.goForward.bind(this)} loginForm={this.loginForm} dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
+    <AccountForm userNumber={this.state.userNumber} setHamburgerHidden={this.setHamburgerHidden.bind(this)} newNotifications={this.state.newNotifications} setNotificationsRead={this.setNotificationsRead.bind(this)} goForward={this.goForward.bind(this)} loginForm={this.loginForm} dismissAccountForm={this.dismissAccountForm.bind(this)} showAccountForm={this.showAccountForm.bind(this)} accountFormOpen={this.state.accountFormOpen} maximizeUI={this.maximizeUI.bind(this)} setCurrentTitle={this.setCurrentTitle.bind(this)} ref={this.accountForm} loggedInUser={this.state.loggedInUser} currentUser={this.state.currentUser} />
 
     </div>
 
     <div className="modeBar" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1}}>
     <button className={"modebutton globe " + (this.state.mode === "all"
       ? "modebuttonactive"
-      : "")} id="requestpublic" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPublicFeed.bind(this)}><img src={globeimage}/></button>
+      : "")} id="requestpublic" style={this.state.isAnonymous || this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPublicFeed.bind(this)}><img src={globeimage}/></button>
     <button className={"modebutton private " + (this.state.mode === "private"
       ? "modebuttonactive"
-      : "")} style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPrivateFeed.bind(this)}><img src={smileyimage}/></button>
-    <button className="modebutton account" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.showAccountForm.bind(this)}><img src={accountimage}/><div style={this.state.newNotifications ? {opacity:1}: {opacity:0}} className="notificationDot accountNotificationDot"></div></button>
+      : "")} style={this.state.isAnonymous || this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.requestPrivateFeed.bind(this)}><img src={smileyimage}/></button>
+    {/* <button className="modebutton account" style={this.state.isAnonymous ? {opacity:0,pointerEvents:"none"}: {opacity:1}} onClick={this.showAccountForm.bind(this)}><img src={accountimage}/><div style={this.state.newNotifications ? {opacity:1}: {opacity:0}} className="notificationDot accountNotificationDot"></div></button> */}
 
-    <div className="shinebutton" id="shinebutton">
-      <input onChange={this.submitInputOnChange.bind(this)} ref={this.submitInput} type="file" accept="image/*" id="file-input"/>
-      <label for="file-input"><img
+    <div onClick={this.shineButtonClick.bind(this)} className="shinebutton" id="shinebutton" style={this.state.minimalUI ? {opacity:0,pointerEvents:"none"}: {opacity:1, pointerEvents:"all"}}>
+      <img
         src={starbutton}
-      /></label>
+      />
     </div>
-    <div className="replyinput">
-      <input onChange={this.replyInputOnChange.bind(this)} ref={this.replyInput} type="file" accept="image/*" id="reply-input"/>
-      <label for="reply-input"></label>
-    </div>
+
 
     </div>
       <div id="root">
@@ -4155,6 +4856,7 @@ class App extends Component {
 
       </div>
       <LoginForm
+      loginRegisterAction={this.loginRegisterAction.bind(this)}
           ref={this.loginForm}
           closeloginform={this.loginFormHide.bind(this)}
           register={this.register.bind(this)}
@@ -4162,6 +4864,15 @@ class App extends Component {
           isAnonymous={this.state.isAnonymous}
           handleUpload={this.handleUpload.bind(this)}
         />
+            <button className="titleFollowButton" onClick={this.handleTitleFollow.bind(this)} style={this.state.currentTitleUid && !this.state.currentTitleUidFollowing ? {'opacity':1, pointerEvents:'all', bottom:'2px'} : {'opacity':0, pointerEvents:'none', bottom:'-100px'}}>Follow</button>
+    <button className="titleFollowButton" onClick={this.handleTitleUnfollow.bind(this)} style={this.state.currentTitleUid && this.state.currentTitleUidFollowing ? {'opacity':1, pointerEvents:'all', bottom:'2px'} : {'opacity':0, pointerEvents:'none', bottom:'-100px'}}>Unfollow</button>
+    <div className="replyinput">
+      <input style={{display:"none"}} onChange={this.replyInputOnChange.bind(this)} ref={this.replyInput} type="file" accept="image/*" id="reply-input"/>
+      <label for="reply-input"></label>
+    </div>
+    <input style={{display:"none"}} onChange={this.submitInputOnChange.bind(this)} ref={this.submitInput} type="file" accept="image/*" id="file-input"/>
+    <label for="file-input"></label>
+    <div ref={this.noFollowingNotification} className="noFollowersNotification">You don't follow anyone yet.</div>
       </div>
     );
   }
